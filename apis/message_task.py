@@ -4,7 +4,7 @@ from pydantic import BaseModel
 # 1. 标准库导入
 from datetime import datetime
 from typing import List, Optional
-
+from core.print import print_error, print_info
 # 2. 第三方库导入
 from fastapi import APIRouter, Depends, HTTPException, status,Body,Query
 from sqlalchemy.orm import Session
@@ -130,10 +130,11 @@ async def create_message_task(
         )
         db.add(db_task)
         db.commit()
-        db.refresh(db_task)
+        # db.refresh(db_task)
         return success_response(data=db_task)
     except Exception as e:
         db.rollback()
+        print_error(e)
         return error_response(code=500, message=str(e))
 
 @router.put("/{task_id}", summary="更新消息任务")
