@@ -19,6 +19,7 @@ def init_user(_db: Db):
           password_hash=pwd_context.hash(password),
           ))
       session.commit()
+      print_info(f"初始化用户成功,请使用以下凭据登录：{username}:{password}")
     except Exception as e:
         # print_error(f"Init error: {str(e)}")
         pass

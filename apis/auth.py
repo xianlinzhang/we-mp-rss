@@ -12,14 +12,12 @@ from .base import success_response, error_response
 from driver.wx import WX_API
 from core.config import set_config, cfg
 router = APIRouter(prefix=f"/auth", tags=["认证"])
+from driver.success import Success
 
-
-def Success(data):
+def ApiSuccess(data):
     if data != None:
             print("\n登录结果:")
-            print(f"Cookies数量: {len(data['cookies'])}")
             print(f"Token: {data['token']}")
-            set_config("cookie",(data['cookies_str']))
             set_config("token",data['token'])
             cfg.reload()
     else:

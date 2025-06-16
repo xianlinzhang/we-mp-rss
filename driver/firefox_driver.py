@@ -272,23 +272,31 @@ class FirefoxController:
                 self.options.add_argument("--disable-gpu")       # 禁用 GPU 加速
                 self.options.add_argument("--no-sandbox")        # 无沙盒模式（Linux 必需）
                 self.options.add_argument("--disable-dev-shm-usage")  # 解决 Linux 内存不足问题
+            # 隐藏状态栏和任务栏
+            self.options.set_preference("toolkit.legacyUserProfileCustomizations.stylesheets", True)  # 允许自定义样式
 
             service = Service(executable_path=self.driver_path)
             self.driver = webdriver.Firefox(service=service, options=self.options)
+            # self.driver.set_window_size(100, 100)
+            if self.system == "windows":
+                self.driver.set_window_position(-1000, 1000)
             return self.driver
         except WebDriverException as e:
             print(f"浏览器启动失败: {str(e)}")
             print(e)
             raise
-
+    def __del__(self):
+        """确保浏览器关闭"""
+        self.Close()
     def open_url(self, url):
         """打开指定URL"""
         if not hasattr(self, 'driver'):
             raise Exception("浏览器未启动，请先调用start_browser()")
         self.driver.get(url)
 
-    def close(self):
+    def Close(self):
         """关闭浏览器"""
+        self.HasLogin= False
         if hasattr(self, 'driver'):
             self.driver.quit()
 

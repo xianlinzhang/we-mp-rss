@@ -6,6 +6,9 @@
         <div class="logo">
           <img  :src="logo" alt="avatar" :width="60" style="margin-right:1rem;">
           <router-link to="/">{{appTitle}}</router-link>
+          <a-tooltip content="点我扫码授权" position="bottom">
+            <icon-scan  @click="showAuthQrcode()"  style="margin-left: 10px; cursor: pointer;color: #000;" />
+          </a-tooltip>
         </div>
       </div>
       <div class="header-right" v-if="hasLogined">
@@ -28,12 +31,17 @@
               <template #icon><icon-lock /></template>
               修改密码
             </a-doption>
+            <a-doption @click="showAuthQrcode">
+              <template #icon><icon-scan /></template>
+              扫码授权
+            </a-doption>
             <a-doption @click="handleLogout">
-              <template #icon><icon-export /></template>
+              <template #icon><icon-user /></template>
               退出登录
             </a-doption>
           </template>
         </a-dropdown>
+        <WechatAuthQrcode ref="qrcodeRef" />
       </div>
     </a-layout-header>
 
@@ -54,11 +62,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { getCurrentUser } from '@/api/auth'
 import { logout } from '@/api/auth'
+import WechatAuthQrcode from '@/components/WechatAuthQrcode.vue'
+
+const qrcodeRef = ref()
+const showAuthQrcode = () => {
+  qrcodeRef.value?.startAuth()
+}
+provide('showAuthQrcode', showAuthQrcode)
 const appTitle = computed(() => import.meta.env.VITE_APP_TITLE || '微信公众号订阅助手')
 const logo=ref("/static/logo.svg")
 const router = useRouter()

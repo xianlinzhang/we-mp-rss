@@ -50,7 +50,7 @@
               <template #icon><icon-refresh /></template>
               刷新
             </a-button>
-            <a-button @click="showAuthQrcode">
+            <a-button @click="handleAuthClick">
               <template #icon><icon-scan /></template>
               刷新授权
             </a-button>
@@ -65,18 +65,6 @@
           </a-space>
         </template>
       </a-page-header>
-
-      <a-modal v-model:visible="qrcodeVisible" title="微信授权二维码" :footer="false" width="400px" @cancel="closeQrcodeModal">
-        <div style="text-align: center; padding: 20px">
-          <template v-if="qrcodeLoading">
-            <a-spin size="large" tip="加载中..." />
-          </template>
-          <template v-else>
-            <img v-if="qrcodeUrl" :src="qrcodeUrl" alt="微信授权二维码" style="width: 180px;" />
-            <p style="margin-top: 16px">请使用微信扫描二维码完成授权</p>
-          </template>
-        </div>
-      </a-modal>
 
       <a-card>
         <div class="search-bar">
@@ -134,8 +122,8 @@ import { ref, onMounted, h } from 'vue'
 import axios from 'axios'
 import { IconApps, IconAtt, IconDelete, IconEdit, IconEye, IconRefresh, IconScan, IconWeiboCircleFill, IconWifi } from '@arco-design/web-vue/es/icon'
 import { getArticles,deleteArticle as deleteArticleApi  } from '@/api/article'
-import { QRCode, checkQRCodeStatus } from '@/api/auth'
 import { getSubscriptions, UpdateMps } from '@/api/subscription'
+import { inject } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
 import { formatDateTime,formatTimestamp } from '@/utils/date'
 import router from '@/router'
@@ -182,16 +170,6 @@ const statusColorMap = {
 }
 
 const columns = [
-  //  {
-  //   title: '题图',
-  //   dataIndex: 'title',
-  //   ellipsis: true,
-  //   width: '8%',
-  //   render: ({ record }) => h('img', {
-  //     src: Avatar(record.pic_url),
-  //     style: { width:"160px",height:"80px","object-fit":"cover"}
-  //   }, record.title)
-  // },
   {
     title: '文章标题',
     dataIndex: 'title',
@@ -307,30 +285,12 @@ const handleSearch = () => {
   pagination.value.current = 1
   fetchArticles()
 }
-const checkQrcode = () => {
-  checkQRCodeStatus().then(response => {
-    qrcodeVisible.value = false
-  }).catch(err => {
-    console.error('检查二维码状态失败:', err)
-  })
 
-}
-const qrcodeVisible = ref(false)
-const qrcodeUrl = ref('')
-const qrcodeLoading = ref(false)
-const showAuthQrcode = async () => {
-  qrcodeLoading.value = true
-  qrcodeVisible.value = true
-  QRCode().then(response => {
-    console.log('获取二维码成功:', response)
-    qrcodeUrl.value = response.code
-    qrcodeLoading.value = false
-    checkQrcode()
-  }).catch(err => {
-    console.error('获取二维码失败:', err)
-    qrcodeLoading.value = false
-  })
-}
+const wechatAuthQrcodeRef = ref()
+  const showAuthQrcode = inject('showAuthQrcode') as () => void
+  const handleAuthClick = () => {
+    showAuthQrcode()
+  }
 
 const openRssFeed = () => {
   if (!activeMpId.value) {
@@ -341,10 +301,6 @@ const openRssFeed = () => {
   if (activeMp) {
     window.open(`/rss/${activeMpId.value}`, '_blank')
   }
-}
-
-const closeQrcodeModal = () => {
-  qrcodeVisible.value = false
 }
 
 const fullLoading = ref(false)
@@ -366,7 +322,6 @@ const showAddModal = () => {
 const handleAddSuccess = () => {
   fetchArticles()
 }
-
 
 const viewArticle = (record: any) => {
   if (record.content) {
