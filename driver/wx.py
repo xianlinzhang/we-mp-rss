@@ -117,7 +117,7 @@ class Wx:
                 print("二维码图片不存在，请重新获取")
                 return False
         return self.isLock
-    def wxLogin(self,CallBack=None,NeedExit=False, refresh_interval=60):
+    def wxLogin(self,CallBack=None,NeedExit=False, refresh_interval=3660*24):
         """
         微信公众平台登录流程：
         1. 检查依赖和环境
