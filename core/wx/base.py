@@ -4,8 +4,7 @@ from core.models import Feed
 
 from core.db import DB
 from core.models.feed import Feed
-from core.config import Config
-from core.config import cfg
+from .cfg import cfg,wx_cfg
 from core.print import print_error,print_info
 
 # 定义基类
@@ -35,8 +34,8 @@ class WxGather:
         cfg.reload()
         self.Gather_Content=cfg.get('gather.content',False)
         self.user_agent = cfg.get('user_agent', '')
-        self.cookies = cfg.get('cookie', '')
-        self.token=cfg.get('token','')
+        self.cookies = wx_cfg.get('cookie', '')
+        self.token=wx_cfg.get('token','')
         self.headers = {
             "Cookie":self.cookies,
             "User-Agent": self.user_agent 
@@ -82,6 +81,9 @@ class WxGather:
             "Cookie": self.cookies,
             "User-Agent":self.user_agent
         }
+        if self.token is None or self.token == "":
+            self.Error("请先扫码登录公众号平台")
+            return
         data={}
         try:
             response = requests.get(

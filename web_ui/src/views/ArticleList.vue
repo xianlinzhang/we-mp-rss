@@ -72,7 +72,7 @@
         </div>
 
         <a-table :columns="columns" :data="articles" :loading="loading" :pagination="pagination"
-          @page-change="handlePageChange" row-key="id"
+          @page-change="handlePageChange"  row-key="id"
           :row-selection="{
             type: 'checkbox',
             showCheckedAll: true,
@@ -142,7 +142,7 @@ const mpPagination = ref({
   showPageSize: true,
   showJumper: true,
   showTotal: true,
-  pageSizeOptions: [10, 20, 50]
+  pageSizeOptions: [10]
 })
 const searchText = ref('')
 const filterStatus = ref('')
@@ -154,7 +154,7 @@ const pagination = ref({
   showTotal: true,
   showJumper: true,
   showPageSize: true,
-  pageSizeOptions: [10, 20, 50]
+  pageSizeOptions: [10]
 })
 
 const statusTextMap = {
@@ -227,8 +227,9 @@ const columns = [
   }
 ]
 
-const handleMpPageChange = (page: number) => {
+const handleMpPageChange = (page: number, pageSize: number) => {
   mpPagination.value.current = page
+  mpPagination.value.pageSize = pageSize
   fetchMpList()
 }
 const activeFeed=ref()
@@ -276,8 +277,10 @@ const fetchArticles = async () => {
   }
 }
 
-const handlePageChange = (page: number) => {
+const handlePageChange = (page: number, pageSize: number, type?: string) => {
+  console.log('分页事件触发:', {page, pageSize, type})
   pagination.value.current = page
+  pagination.value.pageSize = pageSize
   fetchArticles()
 }
 

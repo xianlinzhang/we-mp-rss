@@ -278,8 +278,8 @@ class FirefoxController:
             service = Service(executable_path=self.driver_path)
             self.driver = webdriver.Firefox(service=service, options=self.options)
             # self.driver.set_window_size(100, 100)
-            if self.system == "windows":
-                self.driver.set_window_position(-1000, 1000)
+            # if self.system == "windows":
+            #     self.driver.set_window_position(-1000, 1000)
             return self.driver
         except WebDriverException as e:
             print(f"浏览器启动失败: {str(e)}")

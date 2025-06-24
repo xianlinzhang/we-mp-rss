@@ -78,8 +78,9 @@ copy config.example.yaml config.yaml
 uvicorn web:app --host 0.0.0.0 --port 8001 --reload
 ```
 或
+如果需要初始化数据库和数据，可以使用以下命令：
 ```bash
-python3 main.py -job true -init true
+python3 main.py -job True -init True
 ```
 
 ### 前端界面

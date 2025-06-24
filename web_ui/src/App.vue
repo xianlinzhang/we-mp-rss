@@ -6,7 +6,7 @@
         <div class="logo">
           <img  :src="logo" alt="avatar" :width="60" style="margin-right:1rem;">
           <router-link to="/">{{appTitle}}</router-link>
-          <a-tooltip content="点我扫码授权" position="bottom">
+          <a-tooltip  v-if="hasLogined" content="点我扫码授权" position="bottom">
             <icon-scan  @click="showAuthQrcode()"  style="margin-left: 10px; cursor: pointer;color: #000;" />
           </a-tooltip>
         </div>

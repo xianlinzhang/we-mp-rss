@@ -5,6 +5,7 @@
     :footer="false"
     :mask-closable="false"
     width="400px"
+    @cancel="clearTimer"
   >
     <div class="qrcode-container">
       <div v-if="loading" class="loading">
@@ -49,21 +50,18 @@ const startAuth = async () => {
     loading.value = false
 
     // 开始检查授权状态
-    checkStatusTimer = setInterval(async () => {
-      try {
-        const statusRes = await checkQRCodeStatus()
-        if (statusRes?.login_status) {
-          clearTimer()
-          Message.success('授权成功')
-          emit('success', statusRes)
-          visible.value = false
-        }
-      } catch (err) {
-        clearTimer()
-        errorMessage.value = '授权失败，请重试'
-        emit('error', err)
-      }
-    }, 3000)
+        checkQRCodeStatus().then((statusRes) => {
+          if (statusRes?.login_status) {
+            clearTimer()
+            Message.success('授权成功')
+            emit('success', statusRes)
+            visible.value = false
+          }
+        }).catch((err) => {
+          console.error('检查二维码状态失败:', err)
+          errorMessage.value = '授权失败，请重试'
+           emit('error', err)
+        })
   } catch (err) {
     loading.value = false
     errorMessage.value = '获取二维码失败，请重试'

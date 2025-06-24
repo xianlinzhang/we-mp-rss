@@ -72,7 +72,7 @@ class Wx:
         thread.start()  # 启动线程
         print("微信公众平台登录 v1.34")
         return WX_API.QRcode()
-    wait_time=10
+    wait_time=100
     def QRcode(self):
         return {
             "code":self.wx_login_url
@@ -118,13 +118,14 @@ class Wx:
         # 检查依赖
         if not self.check_dependencies():
             return None
-        self.Close()
+        
         try:
             if  self.isLOCK:
                 return "微信公众平台登录脚本正在运行，请勿重复运行！"
             self.HasLogin=False
             self.isLOCK=True
             self.Clean()
+            self.Close()
             # 初始化浏览器控制器
             controller = FirefoxController()
             self.controller=controller
@@ -135,13 +136,17 @@ class Wx:
             
             # 等待页面完全加载
             print("正在加载登录页面...")
+              # 等待登录后首页完全加载
             wait = WebDriverWait(controller.driver, self.wait_time)
-            wait.until(EC.presence_of_element_located((By.CLASS_NAME, "login__type__container")))
+              # 然后等待其中的图片加载完成
+            wait.until(lambda d: d.execute_script(
+                "return document.querySelector('img').complete"))
+            # time.sleep(2)
             
             # 滚动到二维码区域
             qrcode = controller.driver.find_element(By.CLASS_NAME, "login__type__container__scan__qrcode")
             ActionChains(controller.driver).move_to_element(qrcode).perform()
-            
+            wait = WebDriverWait(controller.driver, self.wait_time)
             # 确保二维码可见
             wait = WebDriverWait(controller.driver, self.wait_time)
             wait.until(EC.visibility_of(qrcode))
@@ -166,13 +171,14 @@ class Wx:
             print("二维码已保存为 wx_qrcode.png，请扫码登录...")
             self.HasCode=True
             
-            # 等待登录成功（检测页面跳转）
+            # 等待登录成功（检测二维码图片加载完成）
             print("等待扫码登录...")
-            wait=WebDriverWait(controller.driver, 120)
+            wait = WebDriverWait(controller.driver, 120)
             wait.until(EC.url_contains(self.WX_HOME))
             self.CallBack=CallBack
+          
+            
             self.Call_Success()
-
             
             self.schedule_refresh(interval=refresh_interval)
         except NameError as e:
@@ -230,8 +236,9 @@ class Wx:
             'cookies_str': cookies_str,
             'token': token,
             'wx_login_url': self.wx_login_url,
-            'cookie_expiry': cookie_expiry
+            'expiry': cookie_expiry
         }
+        self.HasLogin=True
         # print(cookie_expiry)
         if self.CallBack is not None:
             self.CallBack(self.SESSION)
@@ -267,4 +274,3 @@ class Wx:
             print(f"设置cookie过期时出错: {str(e)}")
             return False
 WX_API = Wx()
-WX_API.CallBack=Success
