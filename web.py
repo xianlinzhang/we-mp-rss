@@ -15,6 +15,9 @@ from apis.rss import router as rss_router
 from apis.config_management import router as config_router
 from apis.message_task import router as task_router
 from apis.sys_info import router as sys_info_router
+
+from apis.article_shun_fen_che import router as article_shun_fen_che_router
+
 import apis
 import os
 from core.config import cfg,VERSION,API_BASE
@@ -64,6 +67,10 @@ api_router.include_router(wx_router)
 api_router.include_router(config_router)
 api_router.include_router(task_router)
 api_router.include_router(sys_info_router)
+
+
+# 顺风车
+api_router.include_router(article_shun_fen_che_router)
 
 resource_router = APIRouter(prefix="/static")
 resource_router.include_router(res_router)
