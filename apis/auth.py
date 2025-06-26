@@ -65,7 +65,7 @@ async def getToken(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_202_ACCEPTED,
             detail=error_response(
                 code=40101,
                 message="用户名或密码错误"

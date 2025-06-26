@@ -79,7 +79,7 @@ const handleSubmit = async () => {
                     error.response?.data?.message || 
                     error.message || 
                     '登录失败，请检查用户名和密码'
-    Message.error(errorMsg)
+    // Message.error(errorMsg)
   } finally {
     loading.value = false
   }

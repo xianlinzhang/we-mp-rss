@@ -53,7 +53,7 @@ const startAuth = async () => {
         checkQRCodeStatus().then((statusRes) => {
           if (statusRes?.login_status) {
             clearTimer()
-            Message.success('授权成功')
+            // Message.success('授权成功')
             emit('success', statusRes)
             visible.value = false
           }

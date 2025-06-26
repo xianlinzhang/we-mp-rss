@@ -44,6 +44,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{API_BASE}/auth/token",auto_erro
 
 # 用户缓存字典
 _user_cache = {}
+# 登录失败次数记录
+_login_attempts = {}
+MAX_LOGIN_ATTEMPTS = 5
+
+def get_login_attempts(username: str) -> int:
+    """获取用户登录失败次数"""
+    return _login_attempts.get(username, 0)
 
 def get_user(username: str) -> Optional[DBUser]:
     """从数据库获取用户，带缓存功能"""
@@ -67,11 +74,35 @@ def clear_user_cache(username: str):
     if username in _user_cache:
         del _user_cache[username]
 
-def authenticate_user( username: str, password: str) -> Optional[DBUser]:
+from apis.base import error_response
+def authenticate_user(username: str, password: str) -> Optional[DBUser]:
     """验证用户凭据"""
+    # 检查是否超过最大尝试次数
+    if _login_attempts.get(username, 0) >= MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_202_ACCEPTED,
+            detail=error_response(
+                code=40101,
+                message="用户名或密码错误，您的帐号已锁定，请稍后再试"
+            )
+        )
+    
     user = get_user(username)
     if not user or not pwd_context.verify(password, user.password_hash):
-        return None
+        # 增加失败次数
+        _login_attempts[username] = _login_attempts.get(username, 0) + 1
+        remaining_attempts = MAX_LOGIN_ATTEMPTS - _login_attempts[username]
+        raise HTTPException(
+            status_code=status.HTTP_202_ACCEPTED,
+            detail=error_response(
+                code=40101,
+                message="用户名或密码错误，您还有{remaining_attempts}次机会"
+            )
+        )
+    
+    # 登录成功，清除失败记录
+    if username in _login_attempts:
+        del _login_attempts[username]
     return user
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
