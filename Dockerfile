@@ -15,11 +15,16 @@ COPY . .
 RUN rm -rf ./web_ui
 RUN rm -rf db.db
 COPY ./config.example.yaml  ./config.yaml
-RUN chmod +x ./start.sh
+RUN chmod +x /app/start.sh
+
+# 修复行尾
+RUN sed -i 's/\r$//' /app/start.sh
+
 # 暴露端口
 EXPOSE 8001
 
 # 启动命令
 # CMD ["uvicorn", "web:app", "--host", "0.0.0.0", "--port", "8001"]
 # CMD ["python", "main.py"]
-CMD ["./start.sh"]
+
+CMD ["bash", "/app/start.sh"]

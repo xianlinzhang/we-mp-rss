@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  we-mp-rss:
+    image: ghcr.io/rachelos/we-mp-rss:latest
+    container_name: we-mp-rss
+    ports:
+      - "8001:8001"
+    environment:
+      DB: "mysql+pymysql://root:root@host.docker.internal/we-mp-rss?charset=utf8mb4"
+      USERNAME: "admin"
+      PASSWORD: "admin@123"
+      DINGDING_WEBHOOK: "https://oapi.dingtalk.com/robot/send?access_token=xxx"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

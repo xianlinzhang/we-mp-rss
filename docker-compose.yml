@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  we-mp-rss-build:
+    build:
+      context: .
+    container_name: we-mp-rss-build
+    ports:
+      - "8001:8001"
+    environment:
+      DB: "mysql+pymysql://root:root@host.docker.internal/we-mp-rss-build?charset=utf8mb4"
+      USERNAME: "admin"
+      PASSWORD: "admin@123"
+      DINGDING_WEBHOOK: "https://oapi.dingtalk.com/robot/send?access_token=xxx"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
