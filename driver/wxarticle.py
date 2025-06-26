@@ -1,9 +1,10 @@
-from .wx import WX_API
+from .firefox_driver import FirefoxController
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from typing import Dict
 import time
+import re
 
 class WXArticleFetcher:
     """微信公众号文章获取器
@@ -17,6 +18,40 @@ class WXArticleFetcher:
     def __init__(self, wait_timeout: int = 10):
         """初始化文章获取器"""
         self.wait_timeout = wait_timeout
+        self.controller = FirefoxController()
+        self.controller.start_browser()
+        if not self.controller:
+            raise Exception("WebDriver未初始化或未登录")
+        self.driver = self.controller.driver
+        
+    def extract_biz_from_source(self,url:str) -> str:
+        """从URL或页面源码中提取biz参数
+        
+        1. 首先尝试从URL参数中提取__biz
+        2. 如果URL中没有，则从页面源码中提取
+        """
+        # 尝试从URL中提取
+        match = re.search(r'[?&]__biz=([^&]+)', url)
+        if match:
+            return match.group(1)
+            
+        # 从页面源码中提取
+        try:
+            # 从页面源码中查找biz信息
+            page_source = self.driver.page_source
+            biz_match = re.search(r'var biz = "([^"]+)"', page_source)
+            if biz_match:
+                return biz_match.group(1)
+                
+            # 尝试其他可能的biz存储位置
+            biz_match = re.search(r'window\.__biz=([^&]+)', page_source)
+            if biz_match:
+                return biz_match.group(1)
+                
+            return ""
+            
+        except Exception:
+            return ""
         
     def get_article_content(self, url: str) -> Dict:
         """获取单篇文章详细内容
@@ -36,10 +71,11 @@ class WXArticleFetcher:
             Exception: 如果未登录或获取内容失败
         """
             
-        driver = WX_API.driver
+        self.controller.open_url(url)
+        driver=self.driver
         wait = WebDriverWait(driver, self.wait_timeout)
-        
         try:
+           
             driver.get(url)
             
             # 等待关键元素加载
@@ -74,11 +110,22 @@ class WXArticleFetcher:
             
             return {
                 "title": title,
-                "author": author,
                 "publish_time": publish_time,
                 "content": content,
-                "images": images
+                "images": images,
+                "biz": self.extract_biz_from_source(url)
             }
             
         except Exception as e:
             raise Exception(f"文章内容获取失败: {str(e)}")
+    def close(self):
+        """关闭浏览器"""
+        if self.controller:
+            self.controller.close()
+        else:
+            print("WXArticleFetcher未初始化或已销毁")
+    def __del__(self):
+        """销毁文章获取器"""
+        if hasattr(WXArticleFetcher, 'controller'):
+            WXArticleFetcher.controller.close()
+Web=WXArticleFetcher()

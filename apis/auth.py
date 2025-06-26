@@ -12,14 +12,12 @@ from .base import success_response, error_response
 from driver.wx import WX_API
 from core.config import set_config, cfg
 router = APIRouter(prefix=f"/auth", tags=["认证"])
+from driver.success import Success
 
-
-def Success(data):
+def ApiSuccess(data):
     if data != None:
             print("\n登录结果:")
-            print(f"Cookies数量: {len(data['cookies'])}")
             print(f"Token: {data['token']}")
-            set_config("cookie",(data['cookies_str']))
             set_config("token",data['token'])
             cfg.reload()
     else:
@@ -67,7 +65,7 @@ async def getToken(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_202_ACCEPTED,
             detail=error_response(
                 code=40101,
                 message="用户名或密码错误"
