@@ -61,6 +61,15 @@ gather:
   content_auto_check: ${GATHER.CONTENT_AUTO_CHECK:-False}
   #自动检查未采集文章内容的时间间隔 单位秒默认59分钟 允许值 1-59分钟之间 默认59分钟
   content_auto_interval: ${GATHER.CONTENT_AUTO_INTERVAL:-59}
+
+  #是否自动处理顺风车数据
+  deal_free_ride_articles: ${GATHER.DEAL_FREE_RIDE_ARTICLES:-False}
+  #自动检查处理顺风车文章内容的时间间隔 单位秒默认59分钟 允许值 1-59分钟之间 默认59分钟
+  deal_free_ride_articles_auto_interval: ${GATHER.DEAL_FREE_RIDE_ARTICLES_AUTO_INTERVAL:-59}
+  # 处理顺风车文章 dify 应用密钥
+  deal_free_ride_articles_api_key: ${GATHER.DEAL_FREE_RIDE_ARTICLES_API_KEY:-app-g5CstYWzhD0j65TvO3aue7oi}
+  # 处理顺风车文章 dify 应用基础地址
+  deal_free_ride_articles_api_base: ${GATHER.DEAL_FREE_RIDE_ARTICLES_API_BASE:-http://local1.dify.ai/v1}
 log:
   #日志文件路径，默认为空字符串，表示不输出到文件。如果要输出到文件，可以指定一个路径如：/var/log/we-mp-rss.log 如果为空就不纪录
    file: ${LOG_FILE:-}

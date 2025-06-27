@@ -5,12 +5,11 @@ from core.models.article import Article
 from core.db import DB
 from core.wx.base import WxGather
 from time import sleep
-from core.print import print_success,print_error
+from core.print import print_success, print_error, print_info
 import random
 from sqlalchemy import and_, or_
 
 from core.config import cfg
-from core.print import print_success,print_warning
 
 
 from core.dify_client import Client, models
@@ -44,7 +43,7 @@ def deal_free_ride_article(content, date):
 
     # Send the chat message
     chat_response = client.run_workflows(blocking_chat_req, timeout=6000)
-    print(chat_response)
+    # print(chat_response)
 
     return chat_response.data.status
 
@@ -55,7 +54,7 @@ def fetch_need_deal_free_ride_articles():
     查询content为空的文章，调用微信内容提取方法获取内容并更新数据库
     """
     session = DB.get_session()
-    ga=WxGather().Model()
+
     try:
 
         or_conditions = [
@@ -64,31 +63,43 @@ def fetch_need_deal_free_ride_articles():
 
         # 查询content为空的文章
         articles = (session.query(Article)
-                    # .filter(Article.id == "2247515628_3")
+                    .filter(Article.id == "2247515600_4")
                     .filter(Article.free_ride_status == 0)
                     .filter(or_(*or_conditions))
                     .all())
         
         if not articles:
-            print("没有找到need_deal_free_ride的文章")
+            print_info("没有找到need_deal_free_ride的文章")
             return
         
         for article in articles:
 
-            content = article.content
-            push_date = datetime.datetime.fromtimestamp(article.publish_time).strftime("%Y-%m-%d")
-            deal_status = deal_free_ride_article(content, push_date)
+            try:
+                content = article.content
+                # 没有内容，更新free_ride_status，跳过
+                if content:
+                    push_date = datetime.datetime.fromtimestamp(article.publish_time).strftime("%Y-%m-%d")
+                    deal_status = deal_free_ride_article(content, push_date)
 
-            if deal_status == WorkflowStatus.SUCCEEDED:
-                # 更新内容
-                article.free_ride_status = 1
-                session.commit()
-                print_success(f"成功更新文章 {article.title} 的内容")
-            else:
-                print_error(f"获取文章 {article.title} 内容失败")
-                
+                    if deal_status == WorkflowStatus.SUCCEEDED:
+                        # 更新内容
+                        article.free_ride_status = 1
+                        session.commit()
+                        print_success(f"成功处理文章 {article.id} 的内容")
+                    else:
+                        print_error(f"处理文章 {article.id} 失败")
+                else:
+                    article.free_ride_status = 1
+                    session.commit()
+                    print_success(f"文章 {article.id} 没有内容，更新free_ride_status为1")
+
+            except Exception as e:
+                print_error(f"1处理文章 {article.id} 失败")
+                print_error(f"1处理过程中发生错误: {e}")
+
     except Exception as e:
-        print(f"处理过程中发生错误: {e}")
+        print_error(f"2处理文章 {article.id} 失败")
+        print_error(f"2处理过程中发生错误: {e}")
 
 
 # from core.task import TaskScheduler

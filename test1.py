@@ -106,7 +106,7 @@ def parse_time_string(text, base_date=None):
         base_date = datetime.today()
     else:
         # 将类似 "2025-06" 的字符串转换为 datetime 对象
-        base_date = datetime.strptime(base_date, "%Y-%m")
+        base_date = datetime.strptime(base_date, "%Y-%m-%d")
 
     # 年
     year = base_date.year
@@ -258,6 +258,10 @@ def main(html, year_month):
         else:
             phone = clean_and_extract_phone(row["phone"])
 
+        # 没有手机号，跳过本行
+        if not phone:
+            continue
+
         # 提取路线信息
         route_info = extract_route_info(original_content)
 
@@ -273,14 +277,14 @@ def main(html, year_month):
 
         # 构建结果字典
         data_dict = data_dict = {
-            "类型": route_info.get("类型"),
-            "出发地": route_info.get("出发地"),
-            "目的地": route_info.get("目的地"),
-            "日期": time_str,
-            "时间": hours_str,
-            "人数": num_people,
-            "联系电话": phone,
-            "原始内容": original_content
+            "car_type": route_info.get("类型"),
+            "departure": route_info.get("出发地"),
+            "destination": route_info.get("目的地"),
+            "time_str": time_str,
+            "hours_str": hours_str,
+            "num_people": num_people,
+            "phone": phone,
+            "original_content": original_content
         }
 
         results.append(data_dict)
@@ -318,6 +322,6 @@ def test_table():
     print(json.dumps(extracted_data, ensure_ascii=False, indent=2))
 
 if __name__ == '__main__':
-    test_section_multi()
-    # test_table()
+    # test_section_multi()
+    test_table()
     # print(clean_and_extract_phone('【提供车：广昌→抚州】6月28号上午6点 - -出发抚州，新七座商务车，电话微信同号☎️133 6794 9982谢师傅，！'))
