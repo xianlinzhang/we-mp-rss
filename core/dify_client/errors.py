@@ -4,7 +4,8 @@ from typing import Union
 import httpx
 import httpx_sse
 
-from dify_client import models
+import json as std_json
+from core.dify_client import models
 
 
 class DifyAPIError(Exception):
@@ -113,7 +114,28 @@ def raise_for_status(response: Union[httpx.Response, httpx_sse.ServerSentEvent])
     if isinstance(response, httpx.Response):
         if response.is_success:
             return
-        json = response.json()
+
+        content_type = response.headers.get("Content-Type", "")
+        if "application/json" not in content_type:
+            # 非 JSON 响应，防止 json() 报错
+            text = response.text
+            raise DifyAPIError(
+                status=response.status_code,
+                code="non_json_response",
+                message=f"Non-JSON response received: {text[:200]}..."  # 取前200字符用于调试
+            )
+
+        try:
+            json = response.json()
+        except std_json.JSONDecodeError:
+            # 容错处理：捕获无法解析为 JSON 的情况
+            text = response.text
+            raise DifyAPIError(
+                status=response.status_code,
+                code="invalid_json",
+                message=f"Failed to parse JSON response: {text[:200]}..."
+            )
+
         if "status" not in json:
             json["status"] = response.status_code
         details = models.ErrorResponse(**json)
