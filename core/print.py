@@ -1,3 +1,4 @@
+from datetime import datetime
 import sys
 from colorama import init, Fore, Back, Style
 init()  # 初始化colorama，确保Windows平台支持ANSI颜色
@@ -81,10 +82,11 @@ class ColorPrinter:
         """设置文本为普通样式"""
         self._style = Style.NORMAL
         return self
-    
+
     def print(self, text, end='\n', file=sys.stdout):
-        """打印带格式的文本"""
-        formatted = f"{self._style}{self._back_color}{self._fore_color}{text}{Style.RESET_ALL}"
+        """打印带格式的文本，并在每条信息前加上当前时间"""
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # 获取当前时间并格式化
+        formatted = f"{self._style}{self._back_color}{self._fore_color}[{now}] {text}{Style.RESET_ALL}"
         print(formatted, end=end, file=file)
         self._reset()
         return self
