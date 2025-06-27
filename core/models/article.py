@@ -13,5 +13,6 @@ class Article(Base):
     created_at = Column(DateTime)
     updated_at = Column(DateTime)  
     is_export = Column(Integer)
+    free_ride_status = Column(Integer, default=0)
 
 

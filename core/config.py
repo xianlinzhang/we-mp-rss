@@ -7,10 +7,22 @@ from core.print import print_warning, print_error,print_info
 from .file import FileCrypto
 class Config: 
     config_path=None
+    root_path = None
     config={}
     def __init__(self, config_path=None, encrypt=False):
         self.args = self.parse_args()
         self.config_path = config_path or self.args.config
+        self.root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # 根目录查找
+        if not os.path.exists(self.config_path) and os.path.exists(os.path.join(self.root_path, "config.yaml")):
+            self.config_path = os.path.join(self.root_path, "config.yaml")
+
+        if self.config_path and os.path.exists(self.config_path):
+            print_info(f"使用配置文件: {self.config_path}")
+        else:
+            print_warning(f"未找到配置文件: {self.config_path}")
+            sys.exit(1)
 
         # 确保目录存在
         if os.path.dirname(self.config_path) != "":

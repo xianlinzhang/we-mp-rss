@@ -13,8 +13,7 @@ async def get_articles(
     limit: int = Query(5, ge=1, le=100),
     status: str = Query(None),
     search: str = Query(None),
-    mp_id: str = Query(None),
-    current_user: dict = Depends(get_current_user)
+    mp_id: str = Query(None)
 ):
     session = DB.get_session()
     try:
@@ -30,12 +29,13 @@ async def get_articles(
         if mp_id:
             query = query.filter(Article.mp_id == mp_id)
         if search:
-            query = query.filter(
-                or_(
-                    Article.title.ilike(f"%{search}%"),
-                )
-            )
-        
+            # 按空格拆分搜索关键词，并为每个关键词创建 ilike 条件
+            search_terms = search.split()
+            or_conditions = [
+                Article.title.ilike(f"%{term}%") for term in search_terms
+            ]
+            query = query.filter(or_(*or_conditions))
+
         # 获取总数
         total = query.count()
         

@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from pydantic import BaseModel
 
@@ -11,6 +13,16 @@ from core.res import save_avatar_locally
 router = APIRouter(prefix=f"/free-ride", tags=["顺风车数据管理"])
 def UpdateArticle(art:dict):
             return DB.add_article(art)
+
+
+def clean_and_extract_phone(text):
+    # 去除所有空白字符（包括空格、换行、制表符等）
+    cleaned_text = re.sub(r'\s+', '', text)
+
+    # 提取11位手机号
+    match = re.search(r'\b\d{11}\b', cleaned_text)
+    return match.group() if match else ""
+
 @router.get("/search/{kw}", summary="搜索顺风车")
 async def search_mp(
     kw: str = "",
@@ -134,7 +146,9 @@ async def update_mps(
         if task_data.hours_str is not None:
             db_task.hours_str = task_data.hours_str
         if task_data.phone is not None:
-            db_task.phone = task_data.phone
+            # 只提取手机号
+            phone = clean_and_extract_phone(task_data.phone)
+            db_task.phone = phone
         if task_data.num_people is not None:
             db_task.num_people = task_data.num_people
         db.commit()
@@ -190,9 +204,15 @@ async def add_mp(
         import time
         now = datetime.now()
 
-        
-        # 检查公众号是否已存在
-        existing_feed = session.query(ArticleShunFenChe).filter(ArticleShunFenChe.phone == phone, ArticleShunFenChe.time_str == time_str).first()
+        # 只提取手机号
+        phone = clean_and_extract_phone(phone)
+
+        # 检查已存在：原始内容
+        existing_feed = session.query(ArticleShunFenChe).filter(ArticleShunFenChe.original_content == original_content).first()
+
+        if existing_feed is None:
+            # 检查已存在: 手机号和日期
+            existing_feed = session.query(ArticleShunFenChe).filter(ArticleShunFenChe.phone == phone, ArticleShunFenChe.time_str == time_str).first()
 
 
         if existing_feed:
@@ -200,6 +220,8 @@ async def add_mp(
             existing_feed.car_type = car_type
             existing_feed.departure = departure
             existing_feed.destination = destination
+            existing_feed.phone = phone
+            existing_feed.time_str = time_str
             existing_feed.updated_at = now
         else:
             # 创建新的Feed记录
