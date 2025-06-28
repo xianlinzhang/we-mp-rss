@@ -10,16 +10,17 @@ import random
 from sqlalchemy import and_, or_
 
 from core.config import cfg
-
-
 from core.dify_client import Client, models
+
+import traceback
+
 
 def deal_free_ride_article(content, date):
 
     # Initialize the client with your API key
-    api_key = cfg.get("gather.deal_free_ride_articles_api_key","app-g5CstYWzhD0j65TvO3aue7oi")
+    api_key = cfg.get("gather.deal_free_ride_articles_api_key","")
 
-    api_base = cfg.get("gather.deal_free_ride_articles_api_base","http://local1.dify.ai/v1")
+    api_base = cfg.get("gather.deal_free_ride_articles_api_base","")
 
     client = Client(
         api_key=api_key,
@@ -27,7 +28,7 @@ def deal_free_ride_article(content, date):
     )
     user = "dify-client-python"
 
-    print(api_key, api_base)
+    # print(api_key, api_base)
 
     # Create a blocking chat request
     blocking_chat_req = models.WorkflowsRunRequest(
@@ -58,12 +59,12 @@ def fetch_need_deal_free_ride_articles():
     try:
 
         or_conditions = [
-            Article.title.ilike(f"%{term}%") for term in ['求车', '提供车']
+            Article.title.ilike(f"%{term}%") for term in ['求车', '提供车', '拼车']
         ]
 
         # 查询content为空的文章
         articles = (session.query(Article)
-                    .filter(Article.id == "2247515600_4")
+                    # .filter(Article.id == "2247500774_1")
                     .filter(Article.free_ride_status == 0)
                     .filter(or_(*or_conditions))
                     .all())
@@ -73,7 +74,7 @@ def fetch_need_deal_free_ride_articles():
             return
         
         for article in articles:
-
+            print_success(f"开始处理文章 {article.id} 的内容")
             try:
                 content = article.content
                 # 没有内容，更新free_ride_status，跳过
@@ -92,14 +93,15 @@ def fetch_need_deal_free_ride_articles():
                     article.free_ride_status = 1
                     session.commit()
                     print_success(f"文章 {article.id} 没有内容，更新free_ride_status为1")
-
             except Exception as e:
-                print_error(f"1处理文章 {article.id} 失败")
-                print_error(f"1处理过程中发生错误: {e}")
+                print_error(f"2处理文章 {article.id} 失败")
+                print_error(f"2处理过程中发生错误: {e}")
+                traceback.print_exc()  # 打印完整的堆栈跟踪
 
     except Exception as e:
         print_error(f"2处理文章 {article.id} 失败")
         print_error(f"2处理过程中发生错误: {e}")
+        traceback.print_exc()  # 打印完整的堆栈跟踪
 
 
 # from core.task import TaskScheduler
