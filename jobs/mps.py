@@ -81,6 +81,9 @@ def start_job():
     from jobs.fetch_no_article import start_sync_content
     start_sync_content()
 
+    from jobs.article_deal_free_ride import start_deal_free_ride_articles
+    start_deal_free_ride_articles()
+
     from .taskmsg import get_message_task
     tasks=get_message_task()
     if not tasks:

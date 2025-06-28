@@ -182,6 +182,9 @@ docker build -t we-mp-rss .
 docker run -d --name we-mp-rss -p 8001:8001 we-mp-rss
 ```
 
+# docker-compose重新构建并重新创建容器
+docker compose up --build --force-recreate -d
+
 ## 开发指南
 
 ### 后端开发

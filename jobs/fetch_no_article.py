@@ -12,7 +12,7 @@ def fetch_articles_without_content():
     ga=WxGather().Model()
     try:
         # 查询content为空的文章
-        articles = session.query(Article).filter(Article.content == None).limit(10).all()
+        articles = session.query(Article).filter(Article.content == None).filter(Article.content < 3).limit(10).all()
         
         if not articles:
             print("没有找到content为空的文章")
@@ -36,7 +36,9 @@ def fetch_articles_without_content():
                 session.commit()
                 print_success(f"成功更新文章 {article.title} 的内容")
             else:
-                print_error(f"获取文章 {article.title} 内容失败")
+                article.content_auto_fetch = article.content_auto_fetch +1
+                session.commit()
+                print_error(f"获取文章 {article.title} 内容失败, 抓取次数：{article.content_auto_fetch}")
                 
     except Exception as e:
         print(f"处理过程中发生错误: {e}")
@@ -48,7 +50,7 @@ def start_sync_content():
     if not cfg.get("gather.content_auto_check",False):
         print_warning("自动检查并同步文章内容功能未启用")
         return
-    interval=int(cfg.get("gather.content_auto_interval",1)) # 每隔多少分钟
+    interval=int(cfg.get("gather.content_auto_interval",30)) # 每隔多少分钟
     cron_exp=f"*/{interval} * * * *"
     job_id=scheduler.add_cron_job(fetch_articles_without_content,cron_expr=cron_exp)
     print_success(f"已添自动同步文章内容任务: {job_id}")

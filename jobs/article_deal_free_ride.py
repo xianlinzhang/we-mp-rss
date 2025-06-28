@@ -5,7 +5,7 @@ from core.models.article import Article
 from core.db import DB
 from core.wx.base import WxGather
 from time import sleep
-from core.print import print_success, print_error, print_info
+from core.print import print_success, print_error, print_info, print_warning
 import random
 from sqlalchemy import and_, or_
 
@@ -72,7 +72,11 @@ def fetch_need_deal_free_ride_articles():
         if not articles:
             print_info("没有找到need_deal_free_ride的文章")
             return
-        
+
+        # 更新所有查出来articles的free_ride_status为2：表示为处理中
+        session.query(Article).filter(Article.id.in_([article.id for article in articles])).update({Article.free_ride_status: 2}, synchronize_session=False)
+        session.commit()
+
         for article in articles:
             print_success(f"开始处理文章 {article.id} 的内容")
             try:
@@ -94,6 +98,9 @@ def fetch_need_deal_free_ride_articles():
                     session.commit()
                     print_success(f"文章 {article.id} 没有内容，更新free_ride_status为1")
             except Exception as e:
+                # 标识为失败
+                article.free_ride_status = 3
+                session.commit()
                 print_error(f"2处理文章 {article.id} 失败")
                 print_error(f"2处理过程中发生错误: {e}")
                 traceback.print_exc()  # 打印完整的堆栈跟踪
@@ -104,17 +111,20 @@ def fetch_need_deal_free_ride_articles():
         traceback.print_exc()  # 打印完整的堆栈跟踪
 
 
-# from core.task import TaskScheduler
-# scheduler=TaskScheduler()
-# def start_deal_free_ride_articles():
-#     if not cfg.get("gather.deal_free_ride_articles",False):
-#         print_warning("自动处理顺风车数据功能未启用")
-#         return
-#     interval=int(cfg.get("gather.deal_free_ride_articles_auto_interval",120)) # 每隔多少分钟
-#     cron_exp=f"*/{interval} * * * *"
-#     job_id=scheduler.add_cron_job(fetch_need_deal_free_ride_articles,cron_expr=cron_exp)
-#     print_success(f"已添自动处理顺风车数据任务: {job_id}")
-#     scheduler.start()
+
+def start_deal_free_ride_articles():
+    from core.task import TaskScheduler
+    scheduler = TaskScheduler()
+
+    if not cfg.get("gather.deal_free_ride_articles",False):
+        print_warning("自动处理顺风车数据功能未启用")
+        return
+    interval=int(cfg.get("gather.deal_free_ride_articles_auto_interval",59)) # 每隔多少分钟
+    cron_exp=f"*/{interval} * * * *"
+    job_id=scheduler.add_cron_job(fetch_need_deal_free_ride_articles,cron_expr=cron_exp)
+    print_success(f"已添自动处理顺风车数据任务: {job_id}")
+    scheduler.start()
+
 if __name__ == "__main__":
     # fetch_need_deal_free_ride_articles()
     fetch_need_deal_free_ride_articles()
