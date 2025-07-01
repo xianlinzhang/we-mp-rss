@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-from dify_client.models.base import ResponseMode, File
+from core.dify_client.models.base import ResponseMode, File
 
 
 class WorkflowStatus(StrEnum):

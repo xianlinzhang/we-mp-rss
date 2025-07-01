@@ -2,7 +2,7 @@ from typing import Optional, List
 
 from pydantic import BaseModel
 
-from dify_client.models.base import CompletionInputs, ResponseMode, File, Metadata, Mode
+from core.dify_client.models.base import CompletionInputs, ResponseMode, File, Metadata, Mode
 
 
 class CompletionRequest(BaseModel):

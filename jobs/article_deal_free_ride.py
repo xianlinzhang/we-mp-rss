@@ -101,8 +101,8 @@ def fetch_need_deal_free_ride_articles():
                 # 标识为失败
                 article.free_ride_status = 3
                 session.commit()
-                print_error(f"2处理文章 {article.id} 失败")
-                print_error(f"2处理过程中发生错误: {e}")
+                print_error(f"1处理文章 {article.id} 失败")
+                print_error(f"1处理过程中发生错误: {e}")
                 traceback.print_exc()  # 打印完整的堆栈跟踪
 
     except Exception as e:

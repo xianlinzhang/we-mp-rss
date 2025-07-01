@@ -6,9 +6,9 @@ from typing import Union, Optional, List
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from dify_client import utils
-from dify_client.models.base import Metadata, ErrorResponse
-from dify_client.models.workflow import WorkflowStartedData, WorkflowFinishedData, NodeStartedData, NodeFinishedData
+from core.dify_client import utils
+from core.dify_client.models.base import Metadata, ErrorResponse
+from core.dify_client.models.workflow import WorkflowStartedData, WorkflowFinishedData, NodeStartedData, NodeFinishedData
 
 STREAM_EVENT_KEY = "event"
 

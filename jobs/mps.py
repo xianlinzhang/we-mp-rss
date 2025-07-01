@@ -81,6 +81,7 @@ def start_job():
     from jobs.fetch_no_article import start_sync_content
     start_sync_content()
 
+    # 开启处理顺风车数据
     from jobs.article_deal_free_ride import start_deal_free_ride_articles
     start_deal_free_ride_articles()
 
