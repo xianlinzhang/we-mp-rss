@@ -8,6 +8,8 @@ from core.task import TaskScheduler
 from core.models.feed import Feed
 from core.config import cfg,DEBUG
 from core.print import print_info,print_success,print_error
+from driver.wx import WX_API
+from driver.success import Success
 wx_db=db.Db()
 wx_db.init(cfg.get("db"))
 def fetch_all_article():
@@ -35,31 +37,30 @@ from core.models.message_task import MessageTask
 # from core.queue import TaskQueue
 from .webhook import web_hook
 interval=int(cfg.get("interval",60)) # 每隔多少秒执行一次
-def do_job(mps:list[Feed]=None,task:MessageTask=None):
+def do_job(mp=None,task:MessageTask=None):
         # TaskQueue.add_task(test,info=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         # print("执行任务", task.mps_id)
         print("执行任务")
         all_count=0
         wx=WxGather().Model()
-        for item in mps:
-            try:
-                wx.get_Articles(item.faker_id,CallBack=UpdateArticle,Mps_id=item.id,Mps_title=item.mp_name, MaxPage=1,Over_CallBack=Update_Over,interval=interval)
-            except Exception as e:
-                print_error(e)
-                # raise
-            finally:
-                count=wx.all_count()
-                all_count+=count
-                from jobs.webhook import MessageWebHook 
-                tms=MessageWebHook(task=task,feed=item,articles=wx.articles)
-                web_hook(tms)
-                print_success(f"任务[{item.mp_name}]执行成功,{count}成功条数")
-        print_success(f"所有公众号更新完成,共更新{all_count}条数据")
+        try:
+            wx.get_Articles(mp.faker_id,CallBack=UpdateArticle,Mps_id=mp.id,Mps_title=mp.mp_name, MaxPage=1,Over_CallBack=Update_Over,interval=interval)
+        except Exception as e:
+            print_error(e)
+            # raise
+        finally:
+            count=wx.all_count()
+            all_count+=count
+            from jobs.webhook import MessageWebHook 
+            tms=MessageWebHook(task=task,feed=mp,articles=wx.articles)
+            web_hook(tms)
+            print_success(f"任务[{mp.mp_name}]执行成功,{count}成功条数")
 
-
+from core.queue import TaskQueue
 def add_job(feeds:list[Feed]=None,task:MessageTask=None):
-    from core.queue import TaskQueue
-    TaskQueue.add_task(do_job,feeds,task)
+    for feed in feeds:
+        TaskQueue.add_task(do_job,feed,task)
+        print(f"{feed.mp_name}，加入队列成功")
     print_success(TaskQueue.get_queue_info())
     pass
 import json
@@ -74,6 +75,7 @@ scheduler=TaskScheduler()
 def reload_job():
     print_success("重载任务")
     scheduler.clear_all_jobs()
+    TaskQueue.clear_queue()
     start_job()
 
 def start_job():

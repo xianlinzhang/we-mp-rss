@@ -11,6 +11,12 @@
         </template>
         订阅管理
       </a-menu-item>
+      <!-- <a-menu-item key="/tags">
+        <template #icon>
+          <icon-notification />
+        </template>
+        标签管理
+      </a-menu-item> -->
       <a-menu-item key="/message-tasks">
         <template #icon>
           <icon-notification />
@@ -21,7 +27,7 @@
         <template #icon>
           <icon-settings />
         </template>
-        配置管理
+        配置信息
       </a-menu-item>
       <a-menu-item key="/sys-info">
         <template #icon>

@@ -107,7 +107,7 @@ onMounted(() => {
 
 <template>
   <div class="config-management">
-    <a-card title="配置管理" :bordered="false">
+    <a-card title="配置" :bordered="false">
       <a-space direction="vertical" fill>
         <a-alert v-if="error" type="error" show-icon>{{ error }}</a-alert>
         

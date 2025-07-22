@@ -47,7 +47,11 @@ class Db:
     def create_tables(self):
         """Create all tables defined in models"""
         from core.models.base import Base as B # 导入所有模型
-        Base.metadata.create_all(self.engine)
+        try:
+            B.metadata.create_all(self.engine)
+        except Exception as e:
+            print_error(f"Error creating tables: {e}")
+
         print('All Tables Created Successfully!')    
         
     def close(self) -> None:
@@ -75,9 +79,10 @@ class Db:
             art.content=art.content
             from core.models.base import DATA_STATUS
             art.status=DATA_STATUS.ACTIVE
-            session.add(art) 
+            session.add(art)
             # self._session.merge(art)
-            session.commit()
+            sta=session.commit()
+            
         except Exception as e:
             if "UNIQUE" in str(e) or "Duplicate entry" in str(e):
                 print_warning(f"Article already exists: {art.id}")

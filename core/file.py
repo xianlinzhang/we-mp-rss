@@ -12,16 +12,18 @@ class FileCrypto:
     def __init__(self, password: str):
         """
         初始化加密器
-        :param password: 加密密码
+        :param password: 加密密码，如果为空字符串则跳过加解密
         """
-        self.key = hashlib.sha256(password.encode()).digest()
+        self.key = hashlib.sha256(password.encode()).digest() if password !=None else None
     
     def encrypt(self, data: bytes) -> bytes:
         """
         加密数据
         :param data: 要加密的原始数据
-        :return: 加密后的数据
+        :return: 加密后的数据（如果密钥为空则直接返回原始数据）
         """
+        if self.key is None:
+            return data
         h = hmac.new(self.key, data, hashlib.sha256)
         return h.digest() + data
     
@@ -29,8 +31,11 @@ class FileCrypto:
         """
         解密数据
         :param encrypted_data: 加密数据
-        :return: 解密后的原始数据
+        :return: 解密后的原始数据（如果密钥为空则直接返回原始数据）
         """
+        if self.key is None:
+            return encrypted_data
+            
         if len(encrypted_data) < 32:
             raise ValueError("Invalid encrypted data")
         
@@ -47,23 +52,22 @@ class FileCrypto:
         """
         加密数据并存储到文件
         :param file_path: 文件路径
-        :param data: 要加密的原始数据
+        :param data: 要加密的原始数据（如果密钥为空则直接存储原始数据）
         """
         encrypted_data = self.encrypt(data)
         with open(file_path, 'wb') as f:
-            f.write(b64encode(encrypted_data))
+            f.write(encrypted_data)
     
     def decrypt_from_file(self, file_path: str) -> bytes:
         """
         从文件读取并解密数据
         :param file_path: 文件路径
-        :return: 解密后的原始数据
+        :return: 解密后的原始数据（如果密钥为空则直接返回文件内容）
         """
         with open(file_path, 'rb') as f:
             data = f.read()
         
-        encrypted_data = b64decode(data)
-        return self.decrypt(encrypted_data)
+        return self.decrypt(data)
 
 
 if __name__ == '__main__':

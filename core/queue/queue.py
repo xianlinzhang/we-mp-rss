@@ -90,6 +90,29 @@ class TaskQueueManager:
                 'is_running': self._is_running,
                 'pending_tasks': self._queue.qsize()
             }
+            
+    def clear_queue(self) -> None:
+        """清空队列中的所有任务"""
+        with self._lock:
+            while not self._queue.empty():
+                try:
+                    self._queue.get_nowait()
+                    self._queue.task_done()
+                except queue.Empty:
+                    break
+            print_success("队列已清空")
+            
+    def delete_queue(self) -> None:
+        """删除队列(停止并清空所有任务)"""
+        with self._lock:
+            self._is_running = False
+            while not self._queue.empty():
+                try:
+                    self._queue.get_nowait()
+                    self._queue.task_done()
+                except queue.Empty:
+                    break
+            print_success("队列已删除")
 TaskQueue = TaskQueueManager()
 TaskQueue.run_task_background()
 if __name__ == "__main__":

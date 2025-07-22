@@ -13,7 +13,7 @@ def init_user(_db: Db):
     try:
       username,password=os.getenv("USERNAME", "admin"),os.getenv("PASSWORD", "admin@123")
       session=_db.get_session()
-      session.merge(User(
+      session.add(User(
           id=0,
           username=username,
           password_hash=pwd_context.hash(password),
@@ -25,11 +25,10 @@ def init_user(_db: Db):
         pass
 def sync_models():
      # 同步模型到表结构
-         from core.data_sync import ModelSync
+         from data_sync import DatabaseSynchronizer
          DB.create_tables()
-        #  time.sleep(3)
-        #  sync=ModelSync(eng=DB.get_engine())
-        #  sync.sync_all()
+         time.sleep(3)
+         DatabaseSynchronizer(db_url=cfg.get("db","")).sync()
          print_info("模型同步完成")
 
      

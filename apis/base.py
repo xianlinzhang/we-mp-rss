@@ -22,3 +22,6 @@ def error_response(code: int, message: str, data=None):
         "message": message,
         "data": data
     }
+def format_search_kw(keyword: str):
+    kw=keyword.strip().replace(" ","|").replace("|", "%")
+    return kw

@@ -121,19 +121,13 @@ class TemplateParser:
                 # Handle if condition
                 if block.startswith('if '):
                     condition = block[3:].strip()
-                    print(f"\nDEBUG - Processing if block with condition: {condition}")
-                    print(f"DEBUG - Available functions: {list(self.custom_functions.keys())}")
-                    print(f"DEBUG - Context keys: {list(context.keys())}")
                     result, updated_context = self._evaluate_condition(condition, context)
-                    print(f"DEBUG - Condition evaluation result: {result}")
-                    print(f"DEBUG - Updated context: {updated_context}")
                     # Merge all variables except special ones and functions
                     for k, v in updated_context.items():
                         if not k.startswith('__') and k not in self.custom_functions:
                             # Only update context if the key doesn't exist or was modified
                             if k not in context or context[k] != v:
                                 context[k] = v
-                                print(f"DEBUG - Updated context with: {k} = {v}")
                     # Ensure final_price is available in context if it was calculated
                     if 'final_price' in updated_context:
                         context['final_price'] = updated_context['final_price']
@@ -141,7 +135,6 @@ class TemplateParser:
                     # Find matching endif using helper method
                     endif_idx = self._skip_control_block(i, 'if', 'endif')
                     if endif_idx == len(self.compiled):
-                        # print("DEBUG - Error: No matching endif found for if block")
                         i += 1
                         continue
                     
@@ -198,21 +191,64 @@ class TemplateParser:
                     # Render loop
                     # print(f"DEBUG - For loop items: {items}")  # Debug
                     loop_output = []
+                    total_items = len(items)
                     for item_idx, item in enumerate(items):
                         loop_context = context.copy()
                         loop_context[loop_var] = item
-                        # print(f"DEBUG - Processing item {item_idx}: {item}")  # Debug
+                        
+                        # Add loop variable with iteration info
+                        loop_context['loop'] = {
+                            'index': item_idx + 1,
+                            'index0': item_idx,
+                            'first': item_idx == 0,
+                            'last': item_idx == total_items - 1,
+                            'length': total_items,
+                            'parentloop': context.get('loop')  # Save parent loop context
+                        }
                         
                         # Render loop content with current item
                         item_output = []
-                        for part in loop_content:
+                        j = 0
+                        while j < len(loop_content):
+                            part = loop_content[j]
                             if part is None:
+                                j += 1
                                 continue
                             
-                            # print(f"DEBUG - Processing part: {repr(part)}")  # Debug
-                        
-                            if isinstance(part, str) and part.startswith('{{') and part.endswith('}}'):
-                                # Handle variable reference
+                            # Handle if conditions inside for loop
+                            if (isinstance(part, str) and 
+                                part.startswith('{% if ') and 
+                                part.endswith('%}')):
+                                condition = part[6:-2].strip()
+                                result, _ = self._evaluate_condition(condition, loop_context)
+                                
+                                # Find matching endif
+                                endif_idx = j + 1
+                                nested_depth = 1
+                                while endif_idx < len(loop_content):
+                                    inner_part = loop_content[endif_idx]
+                                    if (isinstance(inner_part, str) and 
+                                        inner_part.startswith('{% if ') and 
+                                        inner_part.endswith('%}')):
+                                        nested_depth += 1
+                                    elif (isinstance(inner_part, str) and 
+                                          inner_part.startswith('{% endif %}')):
+                                        nested_depth -= 1
+                                        if nested_depth == 0:
+                                            break
+                                    endif_idx += 1
+                                
+                                # Process if block if condition is true
+                                if result:
+                                    if_content = loop_content[j+1:endif_idx]
+                                    rendered = self._render_parts(if_content, loop_context)
+                                    item_output.append(rendered)
+                                
+                                # Skip to after endif
+                                j = endif_idx + 1
+                            
+                            # Handle variable references
+                            elif isinstance(part, str) and part.startswith('{{') and part.endswith('}}'):
                                 var_expr = part[2:-2].strip()
                                 # print(f"DEBUG - Evaluating variable: {var_expr}")  # Debug
                             
@@ -249,9 +285,12 @@ class TemplateParser:
                             
                                 # print(f"DEBUG - Variable value: {value}")  # Debug
                                 item_output.append(value)
+                                j += 1
+                            
                             else:
                                 # Handle literal text (preserve whitespace and newlines)
                                 item_output.append(str(part))
+                                j += 1
                         
                         rendered_item = ''.join(item_output)
                         # print(f"DEBUG - Rendered item {item_idx}:\n{repr(rendered_item)}")  # Debug
@@ -326,7 +365,30 @@ class TemplateParser:
         try:
             if not self._is_safe_expression(condition):
                 raise ValueError(f"Potentially dangerous expression: {condition}")
-            
+                
+            # Special handling for loop variables
+            if 'loop.' in condition:
+                # Handle not conditions
+                has_not = 'not ' in condition
+                loop_var = condition.split('loop.')[-1].strip()
+                if has_not:
+                    loop_var = loop_var.replace('not ', '').strip()
+                
+                loop_info = context.get('loop', {})
+                result = False
+                
+                if loop_var == 'last':
+                    result = loop_info.get('last', False)
+                elif loop_var == 'first':
+                    result = loop_info.get('first', False)
+                elif loop_var == 'index':
+                    result = bool(loop_info.get('index', 0))
+                elif loop_var == 'index0':
+                    result = bool(loop_info.get('index0', 0))
+                
+                # Invert result if 'not' was present
+                return (not result if has_not else result), context
+                    
             # Create safe evaluation environment
             safe_globals = self._get_safe_globals()
             eval_globals = {**safe_globals, **self.custom_functions}
@@ -455,7 +517,7 @@ class TemplateParser:
             prev_line_empty = not stripped
             
         # Ensure exactly one newline at end
-        return '\n'.join(cleaned).strip() + '\n'
+        return '\n'.join(cleaned).strip() 
         
     def _parse_for_block(self, block: str) -> tuple:
         """Parse a for block into loop variable and iterable parts."""

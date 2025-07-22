@@ -1,8 +1,10 @@
 import threading
+import random
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from typing import Callable, Any, Optional
 from core.log import logger
+import uuid
 # 设置日志
 
 class TaskScheduler:
@@ -82,6 +84,34 @@ class TaskScheduler:
                     logger.error(error_msg)
                     raise ValueError(error_msg)
                 
+                # 处理随机时间范围
+                def parse_random_field(field: str, field_name: str):
+                    # 假设我们要解析的格式是 "*/1~3" 或 "1~3-3~10"
+                    import re
+                    try:
+                        # 使用正则表达式匹配格式
+                        pattern = r'(\d+)\~(\d+)'
+                        match = re.findall(pattern, field)
+                        if match:
+                            # 提取匹配的组
+                            start, end =match[0]
+                            step=random.randint(int(start),int(end))
+                            field=field.replace(f"{start}~{end}",str(step))
+                    except:
+                        pass
+                    return field
+
+                
+                second = parse_random_field(second, 'second')
+                minute = parse_random_field(minute, 'minute')
+                hour = parse_random_field(hour, 'hour')
+                day = parse_random_field(day, 'day')
+                month = parse_random_field(month, 'month')
+                day_of_week = parse_random_field(day_of_week, 'day_of_week')
+                
+                # 生成job_id
+                job_id = job_id or str(uuid.uuid4())
+
                 trigger = CronTrigger(
                     second=second,
                     minute=minute,
@@ -130,13 +160,21 @@ class TaskScheduler:
     
     def clear_all_jobs(self) -> int:
         """
-        清除所有任务
+        清除所有任务，包括正在运行的任务
         
         :return: 被删除的任务数量
         """
         with self._lock:
             job_count = len(self._jobs)
             if job_count > 0:
+                # 先终止所有正在运行的任务
+                for job in self._scheduler.get_jobs():
+                    try:
+                        self._scheduler.remove_job(job.id)
+                    except Exception as e:
+                        logger.warning(f"Failed to remove job {job.id}: {str(e)}")
+                
+                # 清除所有计划任务
                 self._scheduler.remove_all_jobs()
                 self._jobs.clear()
                 logger.info(f"Removed all {job_count} jobs")

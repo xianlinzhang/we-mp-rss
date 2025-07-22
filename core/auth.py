@@ -96,7 +96,7 @@ def authenticate_user(username: str, password: str) -> Optional[DBUser]:
             status_code=status.HTTP_202_ACCEPTED,
             detail=error_response(
                 code=40101,
-                message="用户名或密码错误，您还有{remaining_attempts}次机会"
+                message=f"用户名或密码错误，您还有{remaining_attempts}次机会"
             )
         )
     

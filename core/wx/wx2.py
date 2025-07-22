@@ -6,6 +6,7 @@ import yaml
 import re
 from bs4 import BeautifulSoup
 from .base import WxGather
+from core.print import print_error
 from core.log import logger
 # 继承 BaseGather 类
 class MpsWeb(WxGather):
@@ -13,18 +14,20 @@ class MpsWeb(WxGather):
     # 重写 content_extract 方法
     def content_extract(self,  url):
         try:
-            session=self.session
-            r = session.get(url, headers=self.headers)
-            if r.status_code == 200:
-                text = r.text
+            from driver.wxarticle import Web as App
+            r = App.get_article_content(url)
+            if r!=None:
+                text = r.get("content","")
                 if text is None:
                     return
+                if "当前环境异常，完成验证后即可继续访问" in text:
+                    print_error("当前环境异常，完成验证后即可继续访问")
                 soup = BeautifulSoup(text, 'html.parser')
                 # 找到内容
-                js_content_div = soup.find('div', {'id': 'js_content'})
+                js_content_div = soup
                 # 移除style属性中的visibility: hidden;
                 if js_content_div is None:
-                    return
+                    return ""
                 js_content_div.attrs.pop('style', None)
                 # 找到所有的img标签
                 img_tags = js_content_div.find_all('img')
@@ -43,7 +46,7 @@ class MpsWeb(WxGather):
                 logger.error(e)
         return ""
     # 重写 get_Articles 方法
-    def get_Articles(self, faker_id:str=None,Mps_id:str=None,Mps_title="",CallBack=None,begin:int=0,MaxPage:int=1,interval=1,Gather_Content=False,Item_Over_CallBack=None,Over_CallBack=None):
+    def get_Articles(self, faker_id:str=None,Mps_id:str=None,Mps_title="",CallBack=None,start_page:int=0,MaxPage:int=1,interval=10,Gather_Content=False,Item_Over_CallBack=None,Over_CallBack=None):
         super().Start(mp_id=Mps_id)
         if self.Gather_Content:
             Gather_Content=True
@@ -54,7 +57,7 @@ class MpsWeb(WxGather):
         params = {
         "sub": "list",
         "sub_action": "list_ex",
-        "begin": 0,
+        "begin":start_page,
         "count": count,
         "fakeid": faker_id,
         "token": self.token,
@@ -65,7 +68,7 @@ class MpsWeb(WxGather):
         # 连接超时
         session=self.session
         # 起始页数
-        i = 0
+        i = start_page
         while True:
             if i >= MaxPage:
                 break
@@ -85,10 +88,10 @@ class MpsWeb(WxGather):
                     break
                 
                 if msg['base_resp']['ret'] == 200003:
-                    super().Error("Invalid Session, stop at {}".format(str(begin)))
+                    super().Error("Invalid Session, stop at {}".format(str(begin)),code="Invalid Session")
                     break
                 if msg['base_resp']['ret'] != 0:
-                    super().Error("错误原因:{}:代码:{}".format(msg['base_resp']['err_msg'],msg['base_resp']['ret']))
+                    super().Error("错误原因:{}:代码:{}".format(msg['base_resp']['err_msg'],msg['base_resp']['ret']),code="Invalid Session")
                     break    
                 # 如果返回的内容中为空则结束
                 if 'publish_page' not in msg:
@@ -107,7 +110,8 @@ class MpsWeb(WxGather):
                                 # info = '"{}","{}","{}","{}"'.format(str(item["aid"]), item['title'], item['link'], str(item['create_time']))
                                 for item in publish_info["appmsgex"]:
                                     if Gather_Content:
-                                        item["content"] = self.content_extract(item['link'])
+                                        if not super().HasGathered(item["aid"]):
+                                            item["content"] = self.content_extract(item['link'])
                                     else:
                                         item["content"] = ""
                                     item["id"] = item["aid"]
@@ -124,6 +128,6 @@ class MpsWeb(WxGather):
                 print(f"Request error: {e}")
                 break
             finally:
-                super().Item_Over(item={Mps_id:Mps_id,Mps_title:Mps_title},CallBack=Item_Over_CallBack)
+                super().Item_Over(item={"mps_id":Mps_id,"mps_title":Mps_title},CallBack=Item_Over_CallBack)
         super().Over(CallBack=Over_CallBack)
         pass

@@ -76,6 +76,8 @@ async def update_user_info(
             
         if "is_active" in update_data:
             user.is_active = bool(update_data["is_active"])
+        if "email" in update_data:
+            user.email = update_data["email"]
         
         user.updated_at = datetime.now()
         session.commit()
@@ -175,12 +177,12 @@ async def upload_avatar(
 ):
     """处理用户头像上传"""
     try:
-        avatar_path="static/avatars"
+        avatar_path="files/avatars"
         # 确保头像目录存在
         os.makedirs(avatar_path, exist_ok=True)
-        
+        from core.res.avatar import avatar_dir
         # 保存文件
-        file_path = f"{avatar_path}/{current_user['username']}.jpg"
+        file_path = f"{avatar_dir}/{current_user['username']}.jpg"
         with open(file_path, "wb") as buffer:
             buffer.write(await file.read())
         

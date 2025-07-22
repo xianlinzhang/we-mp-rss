@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 # 标准导入分组和顺序
 # 1. 标准库导入
+import uuid
 from datetime import datetime
 from typing import List, Optional
 from core.print import print_error, print_info
@@ -50,7 +51,7 @@ async def list_message_tasks(
         message_tasks = query.offset(offset).limit(limit).all()
         
         return success_response({
-            "list": message_tasks,
+            "list": message_tasks ,
             "page": {
                 "limit": limit,
                 "offset": offset
@@ -62,7 +63,7 @@ async def list_message_tasks(
 
 @router.get("/{task_id}", summary="获取单个消息任务详情")
 async def get_message_task(
-    task_id: int,
+    task_id: str,
     current_user: dict = Depends(get_current_user)
 ):
     db=DB.get_session()
@@ -120,6 +121,7 @@ async def create_message_task(
     db=DB.get_session()
     try:
         db_task = MessageTask(
+            id=str(uuid.uuid4()),
             message_template=task_data.message_template,
             web_hook_url=task_data.web_hook_url,
             cron_exp=task_data.cron_exp,
@@ -139,7 +141,7 @@ async def create_message_task(
 
 @router.put("/{task_id}", summary="更新消息任务")
 async def update_message_task(
-    task_id: int,
+    task_id: str,
     task_data: MessageTaskCreate = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -196,7 +198,7 @@ async def fresh_message_task(
     return success_response(message="任务已经重载成功")
 @router.delete("/{task_id}",summary="删除消息任务")
 async def delete_message_task(
-    task_id: int,
+    task_id: str,
     current_user: dict = Depends(get_current_user)
 ):
     """

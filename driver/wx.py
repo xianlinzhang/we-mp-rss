@@ -8,12 +8,13 @@ from .success import Success
 from selenium.webdriver.common.action_chains import ActionChains
 import time
 import os
+from driver.success import WX_LOGIN_ED
+from driver.store import Store
 import re
-from threading import Thread
 from threading import Timer
 from .cookies import expire
 import json
-from core.print import print_error
+from core.print import print_error,print_warning,print_info,print_success
 class Wx:
     HasLogin=False
     SESSION=None
@@ -22,6 +23,18 @@ class Wx:
     WX_LOGIN="https://mp.weixin.qq.com/"
     WX_HOME="https://mp.weixin.qq.com/cgi-bin/home"
     wx_login_url="static/wx_qrcode.png"
+    lock_file_path="data/.lock"
+    CallBack=None
+    Notice=None
+    def __init__(self):
+        self.lock_path=os.path.dirname(self.lock_file_path)
+        self.refresh_interval=3660*24
+        if not os.path.exists(self.lock_path):
+            os.makedirs(self.lock_path)
+        self.Clean()
+        self.release_lock()
+        pass
+
     def check_dependencies(self):
         """检查必要的依赖包"""
         try:
@@ -65,18 +78,28 @@ class Wx:
         except Exception as e:
             print(f"提取token时出错: {str(e)}")
             return None
-    def GetCode(self,CallBack=None):
-        if  self.isLock():
-            return {"code":self.wx_login_url,"msg":"微信公众平台登录脚本正在运行，请勿重复运行！"}
+       
+    def GetCode(self,CallBack=None,Notice=None):
+        self.Notice=Notice
+        if  self.check_lock():
+            print_warning("微信公众平台登录脚本正在运行，请勿重复运行")
+            return {
+                "code":f"{self.wx_login_url}?t={(time.time())}",
+                "msg":"微信公众平台登录脚本正在运行，请勿重复运行！"}
+       
+        self.Clean()
         print("子线程执行中")
-        self.thread = Thread(target=self.wxLogin,args=(CallBack,))  # 传入函数名
+        from core.thread import ThreadManager
+        self.thread = ThreadManager(target=self.wxLogin,args=(CallBack,True))  # 传入函数名
         self.thread.start()  # 启动线程
         print("微信公众平台登录 v1.34")
         return WX_API.QRcode()
-    wait_time=100
+    
+    wait_time=1
     def QRcode(self):
         return {
-            "code":self.wx_login_url
+            "code":f"{self.wx_login_url}?t={(time.time())}",
+            "is_exists":self.GetHasCode(),
         }
     def refresh_task(self):
         try:
@@ -89,22 +112,39 @@ class Wx:
         except Exception as e:
             raise Exception(f"浏览器关闭")  # 重新抛出异常以便外部捕获处理
 
-    def schedule_refresh(self,interval=60):
-        if interval <= 0:
+    def schedule_refresh(self):
+        if self.refresh_interval <= 0:
             return
         if self.HasLogin:
             try:
                 self.refresh_task()
-                Timer(interval, self.schedule_refresh).start()
+                Timer(self.refresh_interval, self.schedule_refresh).start()
             except Exception as e:
                 raise Exception(f"浏览器已经关闭")
-    def Token(self):
-        if 'controller' not in locals():
-            controller = FirefoxController()
-            self.controller=controller
-        self.controller.start_browser()
-        self.controller.open_url(self.WX_HOME)
-        self.schedule_refresh()
+    def Token(self,CallBack=None):
+        try:
+            self.CallBack=CallBack
+            if WX_LOGIN_ED==False:
+                return
+            if 'controller' not in locals():
+                controller = FirefoxController()
+                self.controller=controller
+            from driver.token import wx_cfg
+            token=wx_cfg.get("token", "")
+            self.controller.start_browser()
+            self.controller.open_url(self.WX_HOME)
+            cookie=Store.load()
+            self.controller.add_cookies(cookie)
+            self.controller.add_cookie({"name":"token","value":str(token)})
+
+            qrcode = controller.driver.find_element(By.ID, "jumpUrl")
+            wait = WebDriverWait(controller.driver, self.wait_time)
+            wait.until(EC.visibility_of(qrcode))
+            qrcode.click()
+            time.sleep(5)
+            self.Call_Success()
+        except Exception as e:
+            print_error(f"未登录{str(e)}")
     def isLock(self):             
         if self.isLock:
             if os.path.exists(self.wx_login_url):
@@ -113,12 +153,8 @@ class Wx:
                     return size>364
                 except Exception as e:
                     print(f"二维码图片获取失败: {str(e)}")
-                    return False
-            else:
-                print("二维码图片不存在，请重新获取")
-                return False
         return self.isLock
-    def wxLogin(self,CallBack=None,NeedExit=False, refresh_interval=3660*24):
+    def wxLogin(self,CallBack=None,NeedExit=False):
         """
         微信公众平台登录流程：
         1. 检查依赖和环境
@@ -133,10 +169,10 @@ class Wx:
             return None
         
         try:
-            if  self.isLOCK:
+            if  self.check_lock():
                 return "微信公众平台登录脚本正在运行，请勿重复运行！"
+            self.set_lock()
             self.HasLogin=False
-            self.isLOCK=True
             self.Clean()
             self.Close()
             # 初始化浏览器控制器
@@ -187,11 +223,13 @@ class Wx:
                 raise Exception("二维码图片获取失败，请重新扫码")
             # 等待登录成功（检测二维码图片加载完成）
             print("等待扫码登录...")
+            if self.Notice is not None:
+                self.Notice()
             wait = WebDriverWait(controller.driver, 120)
             wait.until(EC.url_contains(self.WX_HOME))
             self.CallBack=CallBack
             self.Call_Success()
-            self.schedule_refresh(interval=refresh_interval)
+           
         except NameError as e:
             # 修正此处，确保异常处理逻辑正确
             print_error(f"\n错误发生: {str(e)}")
@@ -201,12 +239,15 @@ class Wx:
             print(f"\n错误发生: {str(e)}")
             print("可能的原因:\n1. 请确保已安装Firefox浏览器\n2. 请确保geckodriver已下载并配置到PATH中\n3. 检查网络连接是否可以访问微信公众平台")
             self.SESSION=None
+            self.Clean()
             self.Close()
         finally:
-            self.isLOCK=False
+            self.release_lock()
             if 'controller' in locals() and NeedExit:
                 self.Clean()
-                controller.close()
+                self.Close()
+            else:
+                pass
         return self.SESSION
     def format_token(self,cookies:any,token=""):
         cookies_str=""
@@ -228,8 +269,6 @@ class Wx:
                 'expiry': cookie_expiry
             }
     def Call_Success(self):
-        print("登录成功！")
-        self.HasLogin=True
         # 获取token
         token = self.extract_token_from_requests(self.controller.driver)
         
@@ -237,8 +276,14 @@ class Wx:
         cookies = self.controller.driver.get_cookies()
         # print("\n获取到的Cookie:")
         self.SESSION=self.format_token(cookies,token)
-        self.HasLogin=True
+        self.HasLogin=False if self.SESSION["expiry"] is None else True
         self.Clean()
+        if  self.HasLogin:
+            print_success("登录成功！")
+            Store.save(cookies)
+        else:
+            print_warning("未登录！")
+        
         # print(cookie_expiry)
         if self.CallBack is not None:
             self.CallBack(self.SESSION)
@@ -250,7 +295,7 @@ class Wx:
                 self.controller.close()
                 rel=True
         except:
-            print("浏览器未启动")
+            # print("浏览器未启动")
             pass
         return rel
     def Clean(self):
@@ -272,6 +317,26 @@ class Wx:
                 return False
         except Exception as e:
             print(f"设置cookie过期时出错: {str(e)}")
+            return False
+            
+    def check_lock(self):
+        """检查锁定状态"""
+        time.sleep(1)
+        return os.path.exists(self.lock_file_path)
+        
+    def set_lock(self):
+        """创建锁定文件"""
+        with open(self.lock_file_path, 'w') as f:
+            f.write(str(time.time()))
+        self.isLOCK = True
+        
+    def release_lock(self):
+        """删除锁定文件"""
+        try:
+            os.remove(self.lock_file_path)
+            self.isLOCK = False
+            return True
+        except:
             return False
 
 def DoSuccess(cookies:any) -> dict:

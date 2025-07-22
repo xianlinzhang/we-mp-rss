@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { listMessageTasks, deleteMessageTask,FreshJobApi,FreshJobByIdApi } from '@/api/messageTask'
 import type { MessageTask } from '@/types/messageTask'
 import { useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
+import { Message, Modal } from '@arco-design/web-vue'
 
 const parseCronExpression = (exp: string) => {
   const parts = exp.split(' ')
@@ -108,12 +108,22 @@ const handleView = (id: number) => {
 }
 
 const handleDelete = async (id: number) => {
-  try {
-    await deleteMessageTask(id)
-    fetchTaskList()
-  } catch (error) {
-    console.error(error)
-  }
+  Modal.confirm({
+    title: '确认删除',
+    content: '确定要删除这条消息任务吗？删除后无法恢复',
+    okText: '确认',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await deleteMessageTask(id)
+        Message.success('删除成功')
+        fetchTaskList()
+      } catch (error) {
+        console.error(error)
+        Message.error('删除失败')
+      }
+    }
+  })
 }
 
 onMounted(() => {
@@ -126,11 +136,13 @@ onMounted(() => {
     <div class="message-task-list">
       <div class="header">
         <h2>消息任务列表</h2>
+        <a-tooltip content="点击应用按钮后任务才会生效">
+          <a-button type="primary" @click="FreshJob">应用</a-button>
+        </a-tooltip>
         <a-button type="primary" @click="handleAdd">添加消息任务</a-button>
-        <a-button type="primary" @click="FreshJob">应用</a-button>
       </div>
       <a-alert type="info" closable>
-        注意：只有添加了任务消息才会定时执行更新任务
+        注意：只有添加了任务消息才会定时执行更新任务，点击应用按钮后任务才会生效
       </a-alert>
 
       <a-table
@@ -139,7 +151,7 @@ onMounted(() => {
         @page-change="handlePageChange"
       >
         <template #columns>
-          <a-table-column title="ID" data-index="id" :width="80" />
+          <!-- <a-table-column title="ID" data-index="id" /> -->
           <a-table-column title="名称" data-index="name" ellipsis :width="200"/>
           <!-- <a-table-column title="类型" data-index="message_type" ellipsis /> -->
           <a-table-column title="cron表达式">

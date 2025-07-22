@@ -5,6 +5,9 @@ import uuid
 import os
 import requests
 from urllib.parse import urlparse
+files_dir="data/files"
+avatar_dir=f"{files_dir}/avatars"
+os.makedirs(avatar_dir, exist_ok=True)
 def save_avatar_locally(avatar_url):
     if not cfg.get("local_avatar",False):
         return avatar_url
@@ -12,7 +15,7 @@ def save_avatar_locally(avatar_url):
         return None
     
     # 确保存储目录存在
-    save_dir = "static/avatars"
+    save_dir = avatar_dir
     os.makedirs(save_dir, exist_ok=True)
     
     # 生成唯一文件名

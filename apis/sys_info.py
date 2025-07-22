@@ -5,12 +5,33 @@ from fastapi import APIRouter,Depends
 from typing import Dict, Any
 from core.auth import get_current_user
 from .base import success_response, error_response
-
+from driver.token import wx_cfg
+from core.config import cfg
+from jobs.mps import TaskQueue
+from driver.success import WX_LOGIN_ED,WX_LOGIN_INFO
 router = APIRouter(prefix="/sys", tags=["系统信息"])
 
 # 记录服务器启动时间
 _START_TIME = time.time()
-
+@router.get("/base_info", summary="常规信息")
+async def get_base_info() -> Dict[str, Any]:
+    try:
+        from .ver import API_VERSION
+        from core.ver import VERSION as CORE_VERSION,LATEST_VERSION
+        base_info = {
+            'api_version': API_VERSION,
+            'core_version': CORE_VERSION,
+            "ui":{
+                "name": cfg.get("server.name",""),
+                "web_name": cfg.get("server.web_name",""),
+            }
+        }
+        return success_response(data=base_info)
+    except Exception as e:
+        return error_response(
+            code=50001,
+            message=f"获取信息失败: {str(e)}"
+        )    
 @router.get("/info", summary="获取系统信息")
 async def get_system_info(
     current_user: dict = Depends(get_current_user)
@@ -44,7 +65,15 @@ async def get_system_info(
             'api_version': API_VERSION,
             'core_version': CORE_VERSION,
             'latest_version':LATEST_VERSION,
-            'need_update':CORE_VERSION != LATEST_VERSION
+            'need_update':CORE_VERSION != LATEST_VERSION,
+            "wx":{
+                'token':wx_cfg.get('token',''),
+                'expiry_time':wx_cfg.get('expiry.expiry_time','') if WX_LOGIN_ED else "-",
+                "info":WX_LOGIN_INFO,
+                "login":WX_LOGIN_ED,
+            },
+
+            'queue':TaskQueue.get_queue_info(),
         }
         return success_response(data=system_info)
     except Exception as e:

@@ -12,9 +12,16 @@
         <a-spin size="large" />
         <p>正在获取二维码...</p>
       </div>
-      <div v-else-if="qrcodeUrl" class="qrcode">
+      <div v-else-if="qrcodeUrl" class="qrcode" style="text-align:center;">
         <img :src="qrcodeUrl" alt="微信授权二维码" />
+        <a-tooltip content="扫码请选择公众号或者服务号，如果没有帐号，请点击下方注册" placement="top">
         <p>请使用微信扫码授权</p>
+        </a-tooltip>
+        <p>如果提示没有可用帐号码，请点此
+          <a-tooltip content="注册时请选择公众号或者服务号" placement="top">
+          <a-link href="https://mp.weixin.qq.com/cgi-bin/registermidpage?action=index&weblogo=1&lang=zh_CN" target="_blank">注册</a-link><br/>
+          </a-tooltip>
+        </p>
       </div>
       <div v-else class="error">
         <a-alert type="error" :message="errorMessage" />

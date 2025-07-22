@@ -1,9 +1,13 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, Column, Integer, String, DateTime,Date,ForeignKey,Boolean,Text,Enum,Table
+from sqlalchemy import create_engine, Column, Integer, String, DateTime,Date,ForeignKey,Boolean,Enum,Table
 from sqlalchemy import inspect
-from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.exc import SQLAlchemyError
+from core.config import cfg
 
+if cfg.get("db","sqlite").startswith("sqlite"):
+    from sqlalchemy import Text
+else:
+    from sqlalchemy.dialects.mysql import MEDIUMTEXT as Text
 
 class DataStatus():
     DELETED:int = 1000

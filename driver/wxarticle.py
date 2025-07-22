@@ -19,10 +19,9 @@ class WXArticleFetcher:
         """初始化文章获取器"""
         self.wait_timeout = wait_timeout
         self.controller = FirefoxController()
-        self.controller.start_browser()
         if not self.controller:
             raise Exception("WebDriver未初始化或未登录")
-        self.driver = self.controller.driver
+       
         
     def extract_biz_from_source(self,url:str) -> str:
         """从URL或页面源码中提取biz参数
@@ -70,7 +69,19 @@ class WXArticleFetcher:
         Raises:
             Exception: 如果未登录或获取内容失败
         """
-            
+        info={
+                "title": "",
+                "publish_time": "",
+                "content": "",
+                "images": "",
+                "mp_info":{
+                "mp_name":"",   
+                "logo":"",
+                "biz": "",
+                }
+            }
+        self.controller.start_browser()    
+        self.driver = self.controller.driver
         self.controller.open_url(url)
         driver=self.driver
         wait = WebDriverWait(driver, self.wait_timeout)
@@ -78,6 +89,11 @@ class WXArticleFetcher:
            
             driver.get(url)
             
+            body=driver.find_element(By.TAG_NAME,"body").text
+            info["content"]=body
+            if "该内容已被发布者删除" in body:
+                info["content"]="该内容已被发布者删除"
+                raise Exception("该内容已被发布者删除")
             # 等待关键元素加载
             wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "#activity-detail"))
@@ -87,7 +103,6 @@ class WXArticleFetcher:
             title = driver.find_element(
                 By.CSS_SELECTOR, "#activity-name"
             ).text.strip()
-            
             author = driver.find_element(
                 By.CSS_SELECTOR, "#meta_content .rich_media_meta_text"
             ).text.strip()
@@ -107,21 +122,42 @@ class WXArticleFetcher:
                 for img in content_element.find_elements(By.TAG_NAME, "img")
                 if img.get_attribute("data-src") or img.get_attribute("src")
             ]
-            
-            return {
-                "title": title,
-                "publish_time": publish_time,
-                "content": content,
-                "images": images,
-                "biz": self.extract_biz_from_source(url)
-            }
-            
+            info["title"]=title
+            info["author"]=author
+            info["publish_time"]=publish_time
+            info["content"]=content
+            info["images"]=images
+
         except Exception as e:
-            raise Exception(f"文章内容获取失败: {str(e)}")
-    def close(self):
+            # raise Exception(f"文章内容获取失败: {str(e)}")
+            print(f"文章内容获取失败: {str(e)}")
+
+        try:
+            # 等待关键元素加载
+            wait.until(
+                EC.presence_of_element_located((By.CLASS_NAME, "wx_follow_avatar"))
+            )
+            # 查找<div class="wx_follow_hd">元素
+            ele_logo = driver.find_element(By.CLASS_NAME, 'wx_follow_avatar').find_element(By.TAG_NAME, 'img')
+            # 获取<img>标签的src属性
+            logo_src = ele_logo.get_attribute('src')
+            ele_name = driver.find_element(By.CLASS_NAME, 'wx_follow_bd')
+            title= ele_name.text
+            info["mp_info"]={
+                "mp_name":title,
+                "logo":logo_src,
+                "biz": self.extract_biz_from_source(url), 
+            }
+        except Exception as e:
+            # raise Exception(f"文章内容获取失败: {str(e)}")
+            # print(f"获取公众号信息失败: {str(e)}")    
+            pass
+        self.Close()
+        return info
+    def Close(self):
         """关闭浏览器"""
-        if self.controller:
-            self.controller.close()
+        if hasattr(self, 'controller'):
+            self.controller.Close()
         else:
             print("WXArticleFetcher未初始化或已销毁")
     def __del__(self):

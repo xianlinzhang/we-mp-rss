@@ -11,3 +11,6 @@ static/cache
 static/wx_qrcode.png
 data
 /.idea/
+build
+dist
+data1

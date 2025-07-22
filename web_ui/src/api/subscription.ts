@@ -65,8 +65,12 @@ export const deleteSubscription = (mp_id: string) => {
 }
 
 // 更新订阅公众号文章列表 
-export const UpdateMps = (mp_id: string) => {
-  return http.get<{code: number, message: string}>(`/wx/mps/update/${mp_id||'all'}`)
+export const UpdateMps = (mp_id: string,params: { start_page?: number; end_page?: number }) => {
+   const apiParams = {
+    start_page: (params?.start_page || 0),
+    end_page: params?.end_page || 1
+  }
+  return http.get<{code: number, message: string}>(`/wx/mps/update/${mp_id||'all'}?start_page=${apiParams.start_page}&end_page=${apiParams.end_page}`)
 }
 
 // 更新订阅公众号信息
