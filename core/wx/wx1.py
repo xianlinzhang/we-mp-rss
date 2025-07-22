@@ -6,6 +6,7 @@ import yaml
 import re
 from bs4 import BeautifulSoup
 from .base import WxGather
+from core.print import print_error
 from core.log import logger
 # 继承 BaseGather 类
 class MpsApi(WxGather):
@@ -13,12 +14,8 @@ class MpsApi(WxGather):
     # 重写 content_extract 方法
     def content_extract(self,  url):
         try:
-            session=self.session
-            r = session.get(url, headers=self.headers)
-            if r.status_code == 200:
-                text = r.text
-                if text is None:
-                    return
+            text = super().content_extract(url)
+            if text is not None:
                 soup = BeautifulSoup(text, 'html.parser')
                 # 找到内容
                 js_content_div = soup.find('div', {'id': 'js_content'})
@@ -43,7 +40,7 @@ class MpsApi(WxGather):
                 logger.error(e)
         return ""
     # 重写 get_Articles 方法
-    def get_Articles(self, faker_id:str=None,Mps_id:str=None,Mps_title="",CallBack=None,begin=0,MaxPage:int=1,interval=1,Gather_Content=False,Item_Over_CallBack=None,Over_CallBack=None):
+    def get_Articles(self, faker_id:str=None,Mps_id:str=None,Mps_title="",CallBack=None,start_page=0,MaxPage:int=1,interval=10,Gather_Content=True,Item_Over_CallBack=None,Over_CallBack=None):
         super().Start(mp_id=Mps_id)
         if self.Gather_Content:
              Gather_Content=True
@@ -53,7 +50,7 @@ class MpsApi(WxGather):
         count=5
         params = {
             "action": "list_ex",
-            "begin": begin,
+            "begin": start_page,
             "count": count,
             "fakeid": faker_id,
             "type": "9",
@@ -66,7 +63,7 @@ class MpsApi(WxGather):
         # 连接超时
         session=self.session
         # 起始页数
-        i = 0
+        i = start_page
         while True:
             if i >= MaxPage:
                 break
@@ -80,14 +77,14 @@ class MpsApi(WxGather):
                 
                 msg = resp.json()
 
-                
+                self._cookies=resp.cookies
                 # 流量控制了, 退出
                 if msg['base_resp']['ret'] == 200013:
                     super().Error("frequencey control, stop at {}".format(str(begin)))
                     break
                 
                 if msg['base_resp']['ret'] == 200003:
-                    super().Error("Invalid Session, stop at {}".format(str(begin)))
+                    super().Error("Invalid Session, stop at {}".format(str(begin)),code="Invalid Session")
                     break
                 
                 # 如果返回的内容中为空则结束
@@ -95,14 +92,15 @@ class MpsApi(WxGather):
                     super().Error("all ariticle parsed")
                     break
                 if msg['base_resp']['ret'] != 0:
-                    super().Error("错误原因:{}:代码:{}".format(msg['base_resp']['err_msg'],msg['base_resp']['ret']))
+                    super().Error("错误原因:{}:代码:{}".format(msg['base_resp']['err_msg'],msg['base_resp']['ret']),code="Invalid Session")
                     break    
                 if "app_msg_list" in msg:
                     for item in msg["app_msg_list"]:
                         time.sleep(random.randint(1,3))
                         # info = '"{}","{}","{}","{}"'.format(str(item["aid"]), item['title'], item['link'], str(item['create_time']))
                         if Gather_Content:
-                            item["content"] = self.content_extract(item['link'])
+                            if not super().HasGathered(item["aid"]):
+                                item["content"] = self.content_extract(item['link'])
                         else:
                             item["content"] = ""
                         item["id"] = item["aid"]
@@ -119,6 +117,6 @@ class MpsApi(WxGather):
                 print(f"Request error: {e}")
                 break
             finally:
-                super().Item_Over(item={Mps_id:Mps_id,Mps_title:Mps_title},CallBack=Item_Over_CallBack)
+                super().Item_Over(item={"mps_id":Mps_id,"mps_title":Mps_title},CallBack=Item_Over_CallBack)
         super().Over(CallBack=Over_CallBack)
         pass

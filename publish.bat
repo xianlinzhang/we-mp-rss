@@ -49,9 +49,9 @@ if %COMMENT_FLAG%==1 (
     set comment=%VERSION%
 )
 
-echo "%comment%"
+echo %comment%
 git add .
-git tag -a "v%VERSION%" -m "%VERSION% %comment%"
+git tag -a "v%VERSION%" -m "%VERSION%"
 git commit -m "%VERSION% %comment%"
 
 REM 执行git操作

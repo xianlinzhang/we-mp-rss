@@ -36,11 +36,35 @@
           </template>
           {{ sysInfo.system.node }} / {{ sysInfo.system.machine }} ({{ sysInfo.system.processor }})
         </a-descriptions-item>
+        <a-descriptions-item label="TOKEN">
+          <template #label>
+            <api-outlined /> TOKEN
+          </template>
+          {{ sysInfo.wx.token }}
+        </a-descriptions-item>
+        <a-descriptions-item label="过期时间">
+          <template #label>
+            <api-outlined /> 过期时间
+          </template>
+          {{ sysInfo.wx.expiry_time }}
+        </a-descriptions-item>
         <a-descriptions-item label="API版本">
           <template #label>
             <api-outlined /> API版本
           </template>
           {{ sysInfo.api_version }}
+        </a-descriptions-item>
+        <a-descriptions-item label="队列状态">
+          <template #label>
+            <api-outlined /> 队列状态
+          </template>
+          {{ sysInfo.queue.is_running || false }}
+        </a-descriptions-item>
+        <a-descriptions-item label="队列数量">
+          <template #label>
+            <api-outlined /> 挂起队列数量
+          </template>
+          {{ sysInfo.queue.pending_tasks || 0 }}
         </a-descriptions-item>
         <a-descriptions-item label="核心版本">
           <template #label>
@@ -88,7 +112,15 @@ const sysInfo = ref<SysInfo>({
         "api_version": "/api/v1/wx",
         "core_version": "",
         "latest_version": "",
-        "need_update": true
+        "need_update": true,
+        "wx": {
+            "token": "",
+            "expiry_time": ""
+        },
+        "queue": {
+            "is_running": false,
+            "pending_tasks": 0
+        }
     })
 
 const formatUptime = (seconds: number): string => {

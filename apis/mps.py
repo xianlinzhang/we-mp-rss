@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, UploadFile, File
+from fastapi.responses import FileResponse
+from fastapi.background import BackgroundTasks
 from core.auth import get_current_user
 from core.db import DB
 from core.wx import search_Biz
@@ -6,19 +8,23 @@ from .base import success_response, error_response
 from datetime import datetime
 from core.config import cfg
 from core.res import save_avatar_locally
+import io
+import os
 router = APIRouter(prefix=f"/mps", tags=["公众号管理"])
 def UpdateArticle(art:dict):
             return DB.add_article(art)
+
+
 @router.get("/search/{kw}", summary="搜索公众号")
 async def search_mp(
     kw: str = "",
-    limit: int = 5,
+    limit: int = 10,
     offset: int = 0,
     current_user: dict = Depends(get_current_user)
 ):
     session = DB.get_session()
     try:
-        result = search_Biz(kw)
+        result = search_Biz(kw,limit=limit,offset=offset)
         data={
             'list':result.get('list'),
             'page':{
@@ -82,6 +88,8 @@ async def get_mps(
 @router.get("/update/{mp_id}", summary="更新公众号文章")
 async def update_mps(
      mp_id: str,
+     start_page: int = 0,
+     end_page: int = 1,
     current_user: dict = Depends(get_current_user)
 ):
     session = DB.get_session()
@@ -101,13 +109,14 @@ async def update_mps(
                     message="请不要频繁更新操作",
                     data={"time_span":time_span}
                 )
-            
-
-        from core.wx import WxGather
-        wx=WxGather().Model()
-        wx.get_Articles(mp.faker_id,Mps_id=mp.id,Mps_title=mp.mp_name,CallBack=UpdateArticle)
-        result=wx.articles
-
+        result=[]    
+        def UpArt(mp):
+            from core.wx import WxGather
+            wx=WxGather().Model()
+            wx.get_Articles(mp.faker_id,Mps_id=mp.id,Mps_title=mp.mp_name,CallBack=UpdateArticle,start_page=start_page,MaxPage=end_page)
+            result=wx.articles
+        import threading
+        threading.Thread(target=UpArt,args=(mp,)).start()
         return success_response({
             "time_span":time_span,
             "list":result,

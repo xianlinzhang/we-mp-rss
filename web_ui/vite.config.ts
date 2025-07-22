@@ -29,9 +29,16 @@ export default defineConfig(({ command, mode }) => {
         "/static": {
           target: env.VITE_API_BASE_URL,
           changeOrigin: true,
-          // rewrite: (path) => path.replace(/^\/static/, ""),
+        },
+        "/files": {
+          target: env.VITE_API_BASE_URL,
+          changeOrigin: true,
         },
         "/rss": {
+          target: env.VITE_API_BASE_URL,
+          changeOrigin: true,
+        },
+        "/feed": {
           target: env.VITE_API_BASE_URL,
           changeOrigin: true,
         },

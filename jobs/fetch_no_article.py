@@ -4,6 +4,7 @@ from core.wx.base import WxGather
 from time import sleep
 from core.print import print_success,print_error
 import random
+from driver.wxarticle import Web
 def fetch_articles_without_content():
     """
     查询content为空的文章，调用微信内容提取方法获取内容并更新数据库
@@ -15,7 +16,7 @@ def fetch_articles_without_content():
         articles = session.query(Article).filter(Article.content == None).limit(10).all()
         
         if not articles:
-            print("没有找到content为空的文章")
+            print_warning("暂无需要获取内容的文章")
             return
         
         for article in articles:
@@ -28,7 +29,10 @@ def fetch_articles_without_content():
             print(f"正在处理文章: {article.title}, URL: {url}")
             
             # 获取内容
-            content = ga.content_extract(url)
+            if cfg.get("gather.content_mode","web"):
+                content=Web.get_article_content(url).get("content")
+            else:
+                content = ga.content_extract(url)
             sleep(random.randint(3,10))
             if content:
                 # 更新内容
@@ -40,6 +44,8 @@ def fetch_articles_without_content():
                 
     except Exception as e:
         print(f"处理过程中发生错误: {e}")
+    finally:
+        Web.Close()
 from core.task import TaskScheduler
 scheduler=TaskScheduler()
 from core.config import cfg

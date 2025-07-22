@@ -3,10 +3,47 @@ from core.auth import get_current_user
 from core.db import DB
 from core.models.base import DATA_STATUS
 from core.models.article import Article
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, desc
 from .base import success_response, error_response
 from core.config import cfg
+from apis.base import format_search_kw
+from core.print import print_warning, print_info, print_error, print_success
 router = APIRouter(prefix=f"/articles", tags=["文章管理"])
+
+
+@router.delete("/clean", summary="清理无效文章(MP_ID不存在于Feeds表中的文章)")
+async def clean_orphan_articles(
+    current_user: dict = Depends(get_current_user)
+):
+    session = DB.get_session()
+    try:
+        from core.models.feed import Feed
+        from core.models.article import Article
+        
+        # 找出Articles表中mp_id不在Feeds表中的记录
+        subquery = session.query(Feed.id).subquery()
+        deleted_count = session.query(Article)\
+            .filter(~Article.mp_id.in_(subquery))\
+            .delete(synchronize_session=False)
+        
+        session.commit()
+        
+        return success_response({
+            "message": "清理无效文章成功",
+            "deleted_count": deleted_count
+        })
+    except Exception as e:
+        session.rollback()
+        print(f"清理无效文章错误: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_201_CREATED,
+            detail=error_response(
+                code=50001,
+                message="清理无效文章失败"
+            )
+        )
+
+
 @router.api_route("", summary="获取文章列表",methods= ["GET", "POST"], operation_id="get_articles_list")
 async def get_articles(
     offset: int = Query(0, ge=0),
@@ -32,22 +69,20 @@ async def get_articles(
         if search:
             query = query.filter(
                 or_(
-                    Article.title.ilike(f"%{search}%"),
+                    Article.title.ilike(f"%{format_search_kw(search)}%"),
                 )
             )
         
         # 获取总数
         total = query.count()
-        
+        query= query.order_by(Article.publish_time.desc(),Article.id.desc()).offset(offset).limit(limit)
+        # query= query.order_by(Article.id.desc()).offset(offset).limit(limit)
         # 分页查询（按发布时间降序）
-        from sqlalchemy import desc
-        articles = query.order_by(desc(Article.publish_time))\
-                       .offset(offset)\
-                       .limit(limit)\
-                       .all()
-        # 打印生成的 SQL 语句
-        print(query.statement.compile(compile_kwargs={"literal_binds": True}))
+        articles = query.all()
         
+        # 打印生成的 SQL 语句（包含分页参数）
+        print_warning(query.statement.compile(compile_kwargs={"literal_binds": True}))
+                       
         # 查询公众号名称
         from core.models.feed import Feed
         mp_names = {}

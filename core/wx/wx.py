@@ -3,7 +3,8 @@ import json
 import re
 import datetime
 from datetime import datetime, timezone
-from core.config import cfg
+# from core.config import cfg
+from .cfg import wx_cfg,cfg
 import core.db as db
 
 def dateformat(timestamp:any):
@@ -16,9 +17,9 @@ def dateformat(timestamp:any):
     t=(local_dt.strftime("%Y-%m-%d %H:%M:%S"))
     return t
 def set_config(key:str,value:str):
-    cfg.set(key,value)
+    wx_cfg.set(key,value)
 def save_config():
-    cfg.save_config()
+    wx_cfg.save_config()
 #通过公众号码平台接口查询公众号
 def search_Biz(kw:str="",limit=5,offset=0):
     url = "https://mp.weixin.qq.com/cgi-bin/searchbiz"
@@ -87,8 +88,8 @@ def content_extract(url):
 #通过公众号接口获取公众号文章列表
 def get_Articles(faker_id:str):
     headers = {
-        "Cookie": cfg.get("cookie"),
-        "User-Agent": cfg.get("user_agent")
+        "Cookie": wx_cfg.get("cookie"),
+        "User-Agent": wx_cfg.get("user_agent")
     }
     params = {
         "sub": "list",
@@ -96,15 +97,15 @@ def get_Articles(faker_id:str):
         "begin": 0,
         "count": cfg.get("count"),
         "fakeid": faker_id,
-        "token": cfg.get("token"),
+        "token": wx_cfg.get("token"),
         "lang": "zh_CN",
         "f": "json",
         "ajax": 1
     }
     url = "https://mp.weixin.qq.com/cgi-bin/appmsgpublish"
     headers = {
-        "Cookie": cfg.get("cookie"),
-        "User-Agent": cfg.get("user_agent")
+        "Cookie": wx_cfg.get("cookie"),
+        "User-Agent": wx_cfg.get("user_agent")
     }
     data={}
     try:

@@ -10,3 +10,6 @@ item
 static/cache
 static/wx_qrcode.png
 data
+build
+dist
+data1

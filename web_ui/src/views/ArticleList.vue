@@ -1,63 +1,76 @@
 <template>
   <a-spin :loading="fullLoading" tip="正在刷新..." size="large">
   <a-layout class="article-list">
-    <a-layout-sider :width=380
-      :style="{ background: '#fff', padding: '0', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column' }">
-      <a-card :bordered="false" title="公众号"
-        :headStyle="{ padding: '12px 16px', borderBottom: '1px solid #eee', position: 'fixed', top: 0, background: '#fff', zIndex: 1 }">
+    <a-layout-sider :width=300
+      :style="{ background: '#fff', padding: '0', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column' ,border:0}">
+      <a-card :bordered="false" title="公众号" 
+        :headStyle="{ padding: '12px 16px', borderBottom: '1px solid #eee', background: '#fff', zIndex: 1 ,border:0}">
         <template #extra>
           <a-button type="primary" @click="showAddModal">
             <template #icon><icon-plus /></template>
             添加订阅
           </a-button>
         </template>
-        <div style="display: flex; flex-direction: column; height: calc(100vh - 150px); background: #fff">
-          <div style="flex: 1; overflow: auto">
+        <div style="display: flex; flex-direction: column;; background: #fff">
             <a-list :data="mpList" :loading="mpLoading" bordered>
               <template #item="{ item, index }">
                 <a-list-item @click="handleMpClick(item.id)" :class="{ 'active-mp': activeMpId === item.id }"
-                  style="padding: 12px 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                  style="padding: 9px 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
                  <div style="display: flex; align-items: center;">
                    <img :src="Avatar(item.avatar)" width="40" style="float:left;margin-right:1rem;"/>
-                   <a-typography-text  strong style="line-height:40px;">
+                   <a-typography-text  strong style="line-height:32px;">
                      {{ item.name || item.mp_name }}
                    </a-typography-text>
-                   <a-button v-if="activeMpId === item.id" size="mini" type="text" status="danger" @click="$event.stopPropagation(); deleteMp(item.id)" >
+                   <a-button v-if="activeMpId === item.id && item.id!=''" size="mini" type="text" status="danger" @click="$event.stopPropagation(); deleteMp(item.id)" >
                      <template #icon><icon-delete /></template>
                     </a-button>
                   </div>
                 </a-list-item>
               </template>
             </a-list>
-          </div>
-          <div style="padding: 12px 16px; border-top: 1px solid #eee; background: #fff">
-            <a-pagination v-model:current="mpPagination.current" v-model:page-size="mpPagination.pageSize"
-              :total="mpPagination.total" :page-size-options="mpPagination.pageSizeOptions"
-              jump-next jump-prev show-quick-jumper :show-size-changer="true" size="small" show-total="true"
-              @change="handleMpPageChange" />
-          </div>
+            <a-pagination :total="mpPagination.total" simple  @change="handleMpPageChange" :show-total="true" style="margin-top: 1rem;"/>
         </div>
       </a-card>
     </a-layout-sider>
 
-    <a-layout-content :style="{ padding: '20px' }">
+    <a-layout-content :style="{ padding: '20px', width: '100%'}" >
       <a-page-header 
-      :title="activeFeed ? activeFeed.name : '文章列表'" 
-      :subtitle="activeFeed ? '管理 ' + activeFeed.name + ' 的内容' : '管理您的公众号订阅内容'" :show-back="false">
+      :title="activeFeed ? activeFeed.name : '全部'" 
+      :subtitle="'管理您的公众号订阅内容'" :show-back="false">
           <template #extra>
           <a-space>
-            <a-button @click="refresh">
+            <a-button @click="refresh" v-if="activeFeed?.id!=''">
               <template #icon><icon-refresh /></template>
               刷新
             </a-button>
-            <a-button @click="showAuthQrcode">
+            <a-button @click="clear_articles" v-else>
+              <template #icon><icon-delete /></template>
+              清理无效文章
+            </a-button>
+            <a-button @click="handleAuthClick">
               <template #icon><icon-scan /></template>
               刷新授权
             </a-button>
-            <a-button @click="openRssFeed">
-              <template #icon><IconWifi /></template>
-              RSS订阅
+            <a-dropdown>
+              <a-button>
+                <template #icon><IconWifi /></template>
+                订阅
+                <icon-down />
+              </a-button>
+              <template #content>
+                <a-doption @click="rssFormat='atom'; openRssFeed()">ATOM</a-doption>
+                <a-doption @click="rssFormat='rss'; openRssFeed()">RSS</a-doption>
+                <a-doption @click="rssFormat='json'; openRssFeed()">JSON</a-doption>
+              </template>
+            </a-dropdown>
+            <!-- <a-button @click="importArticles" tooltip="导入JSON格式文章数据">
+              <template #icon><icon-import /></template>
+              导入
             </a-button>
+            <a-button @click="exportArticles" tooltip="导出当前文章列表为JSON文件">
+              <template #icon><icon-export /></template>
+              导出
+            </a-button> -->
             <a-button type="primary" status="danger" @click="handleBatchDelete" :disabled="!selectedRowKeys.length">
               <template #icon><icon-delete /></template>
               批量删除
@@ -66,25 +79,30 @@
         </template>
       </a-page-header>
 
-      <a-modal v-model:visible="qrcodeVisible" title="微信授权二维码" :footer="false" width="400px" @cancel="closeQrcodeModal">
-        <div style="text-align: center; padding: 20px">
-          <template v-if="qrcodeLoading">
-            <a-spin size="large" tip="加载中..." />
-          </template>
-          <template v-else>
-            <img v-if="qrcodeUrl" :src="qrcodeUrl" alt="微信授权二维码" style="width: 180px;" />
-            <p style="margin-top: 16px">请使用微信扫描二维码完成授权</p>
-          </template>
-        </div>
+      <a-modal 
+        v-model:visible="refreshModalVisible" 
+        title="设置刷新范围"
+        @ok="handleRefresh"
+        @cancel="refreshModalVisible = false"
+      >
+        <a-form :model="refreshForm" :rules="refreshRules">
+          <a-form-item field="startPage" label="开始页码">
+            <a-input-number v-model="refreshForm.startPage" :min="1" />
+          </a-form-item>
+          <a-form-item field="endPage" label="结束页码">
+            <a-input-number v-model="refreshForm.endPage" :min="refreshForm.startPage" />
+          </a-form-item>
+        </a-form>
       </a-modal>
 
-      <a-card>
+      <a-card style="border:0">
+        <a-alert type="success" closable>{{activeFeed?.mp_intro||"请选择一个公众号码进行管理,搜索文章后再点击订阅会有惊喜哟！！！"}}</a-alert>
         <div class="search-bar">
           <a-input-search v-model="searchText" placeholder="搜索文章标题" @search="handleSearch" @keyup.enter="handleSearch" allow-clear />
         </div>
 
-        <a-table :columns="columns" :data="articles" :loading="loading" :pagination="pagination"
-          @page-change="handlePageChange" row-key="id"
+        <a-table :columns="columns" :data="articles" :loading="loading" :pagination="pagination" style="width: 100%"
+          @page-change="handlePageChange"  row-key="id"
           :row-selection="{
             type: 'checkbox',
             showCheckedAll: true,
@@ -133,9 +151,9 @@ import { Avatar } from '@/utils/constants'
 import { ref, onMounted, h } from 'vue'
 import axios from 'axios'
 import { IconApps, IconAtt, IconDelete, IconEdit, IconEye, IconRefresh, IconScan, IconWeiboCircleFill, IconWifi } from '@arco-design/web-vue/es/icon'
-import { getArticles,deleteArticle as deleteArticleApi  } from '@/api/article'
-import { QRCode, checkQRCodeStatus } from '@/api/auth'
-import { getSubscriptions, UpdateMps } from '@/api/subscription'
+import { getArticles,deleteArticle as deleteArticleApi ,ClearArticle } from '@/api/article'
+import { getSubscriptions, UpdateMps} from '@/api/subscription'
+import { inject } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
 import { formatDateTime,formatTimestamp } from '@/utils/date'
 import router from '@/router'
@@ -151,10 +169,10 @@ const mpPagination = ref({
   current: 1,
   pageSize: 10,
   total: 0,
-  showPageSize: true,
-  showJumper: true,
+  showPageSize: false,
+  showJumper: false,
   showTotal: true,
-  pageSizeOptions: [10, 20, 50]
+  pageSizeOptions: [5, 10, 15]
 })
 const searchText = ref('')
 const filterStatus = ref('')
@@ -166,7 +184,7 @@ const pagination = ref({
   showTotal: true,
   showJumper: true,
   showPageSize: true,
-  pageSizeOptions: [10, 20, 50]
+  pageSizeOptions: [10]
 })
 
 const statusTextMap = {
@@ -182,23 +200,14 @@ const statusColorMap = {
 }
 
 const columns = [
-  //  {
-  //   title: '题图',
-  //   dataIndex: 'title',
-  //   ellipsis: true,
-  //   width: '8%',
-  //   render: ({ record }) => h('img', {
-  //     src: Avatar(record.pic_url),
-  //     style: { width:"160px",height:"80px","object-fit":"cover"}
-  //   }, record.title)
-  // },
   {
     title: '文章标题',
     dataIndex: 'title',
-    width: '70%',
+    width: '60%',
     ellipsis: true,
     render: ({ record }) => h('a', {
       href: record.url || '#',
+      title: record.title,
       target: '_blank',
       style: { color: 'var(--color-text-1)' }
     }, record.title)
@@ -206,7 +215,7 @@ const columns = [
   {
     title: '公众号',
     dataIndex: 'mp_id',
-    width: '10%',
+    width: '8%',
     ellipsis: true,
     render: ({ record }) => {
       const mp = mpList.value.find(item => item.id === record.mp_id);
@@ -218,7 +227,7 @@ const columns = [
   {
     title: '更新时间',
     dataIndex: 'created_at',
-    width: '10%',
+    width: '8%',
     render: ({ record }) => h('span',
       { style: { color: 'var(--color-text-3)', fontSize: '12px' } },
       formatDateTime(record.created_at)
@@ -227,14 +236,14 @@ const columns = [
   {
     title: '发布时间',
     dataIndex: 'publish_time',
-    width: '10%',
+    width: '8%',
     render: ({ record }) => h('span',
       { style: { color: 'var(--color-text-3)', fontSize: '12px' } },
       formatTimestamp(record.publish_time)
     )
   },
   {
-    title: '是否有正文',
+    title: '正文',
     width: '8%',
     render: ({ record }) => h('span', 
       { style: { color: 'var(--color-text-3)', fontSize: '12px' } },
@@ -244,16 +253,20 @@ const columns = [
   {
     title: '操作',
     dataIndex: 'actions',
-    width: '120px',
     slotName: 'actions'
   }
 ]
 
-const handleMpPageChange = (page: number) => {
+const handleMpPageChange = (page: number, pageSize: number) => {
   mpPagination.value.current = page
+  mpPagination.value.pageSize = pageSize
   fetchMpList()
 }
-const activeFeed=ref()
+const rssFormat = ref('atom')
+const activeFeed=ref({
+  id:"",
+  name:"全部",
+})
 const handleMpClick = (mpId: string) => {
   activeMpId.value = mpId
   pagination.value.current = 1
@@ -298,8 +311,10 @@ const fetchArticles = async () => {
   }
 }
 
-const handlePageChange = (page: number) => {
+const handlePageChange = (page: number, pageSize: number, type?: string) => {
+  console.log('分页事件触发:', {page, pageSize, type})
   pagination.value.current = page
+  pagination.value.pageSize = pageSize
   fetchArticles()
 }
 
@@ -307,56 +322,73 @@ const handleSearch = () => {
   pagination.value.current = 1
   fetchArticles()
 }
-const checkQrcode = () => {
-  checkQRCodeStatus().then(response => {
-    qrcodeVisible.value = false
-  }).catch(err => {
-    console.error('检查二维码状态失败:', err)
-  })
 
-}
-const qrcodeVisible = ref(false)
-const qrcodeUrl = ref('')
-const qrcodeLoading = ref(false)
-const showAuthQrcode = async () => {
-  qrcodeLoading.value = true
-  qrcodeVisible.value = true
-  QRCode().then(response => {
-    console.log('获取二维码成功:', response)
-    qrcodeUrl.value = response.code
-    qrcodeLoading.value = false
-    checkQrcode()
-  }).catch(err => {
-    console.error('获取二维码失败:', err)
-    qrcodeLoading.value = false
-  })
-}
+const wechatAuthQrcodeRef = ref()
+  const showAuthQrcode = inject('showAuthQrcode') as () => void
+  const handleAuthClick = () => {
+    showAuthQrcode()
+  }
 
 const openRssFeed = () => {
+  const format = ['rss', 'atom', 'json'].includes(rssFormat.value) 
+    ? rssFormat.value 
+    : 'atom'
+  let search=""
+  if(searchText.value!=""){
+    search="/search/"+searchText.value;
+  }
   if (!activeMpId.value) {
-    window.open(`/rss`, '_blank')
+    window.open(`/feed${search}/all.${format}`, '_blank')
     return
   }
   const activeMp = mpList.value.find(item => item.id === activeMpId.value)
   if (activeMp) {
-    window.open(`/rss/${activeMpId.value}`, '_blank')
+    window.open(`/feed${search}/${activeMpId.value}.${format}`, '_blank')
   }
-}
-
-const closeQrcodeModal = () => {
-  qrcodeVisible.value = false
 }
 
 const fullLoading = ref(false)
 
-const refresh = () => {
+const refreshModalVisible = ref(false)
+const refreshForm = ref({
+  startPage: 0,
+  endPage: 1
+})
+const refreshRules = {
+  startPage: [{ required: true, message: '请输入开始页码' }],
+  endPage: [{ required: true, message: '请输入结束页码' }]
+}
+
+const showRefreshModal = () => {
+  refreshModalVisible.value = true
+}
+
+const handleRefresh = () => {
   fullLoading.value = true
-  UpdateMps(activeMpId.value).then(() => {
+  UpdateMps(activeMpId.value, {
+    start_page: refreshForm.value.startPage,
+    end_page: refreshForm.value.endPage
+  }).then(() => {
     Message.success('刷新成功')
+    refreshModalVisible.value = false
   }).finally(() => {
     fullLoading.value = false
   })
   fetchArticles()
+}
+const clear_articles = () => {
+  fullLoading.value = true
+  ClearArticle().then((res) => {
+    Message.success(res?.message||'清理成功')
+    refreshModalVisible.value = false
+  }).finally(() => {
+    fullLoading.value = false
+  })
+  fetchArticles()
+}
+
+const refresh = () => {
+  showRefreshModal()
 }
 
 const showAddModal = () => {
@@ -366,7 +398,6 @@ const showAddModal = () => {
 const handleAddSuccess = () => {
   fetchArticles()
 }
-
 
 const viewArticle = (record: any) => {
   if (record.content) {
@@ -449,13 +480,22 @@ const fetchMpList = async () => {
       page: mpPagination.value.current - 1,
       pageSize: mpPagination.value.pageSize
     })
-
+    
     mpList.value = res.list.map(item => ({
       id: item.id || item.mp_id,
       name: item.name || item.mp_name,
       avatar: item.avatar || item.mp_cover || '',
+      mp_intro: item.mp_intro || item.mp_intro || '',
       article_count: item.article_count || 0
     }))
+    // 添加'全部'选项
+    mpList.value.unshift({
+      id: '',
+      name: '全部',
+      avatar: '/static/logo.svg',
+      mp_intro: '显示所有公众号文章',
+      article_count: res.total || 0
+    });
     mpPagination.value.total = res.total || 0
   } catch (error) {
     console.error('获取公众号列表错误:', error)
@@ -484,15 +524,55 @@ const deleteMp = async (mpId: string) => {
     Message.error('删除订阅号失败，请稍后重试');
   }
 }
+
+const importArticles = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      const data = JSON.parse(content);
+      // 这里应该调用API导入数据
+      Message.success(`成功导入${data.length}篇文章`);
+    } catch (error) {
+      console.error('导入文章失败:', error);
+      Message.error('导入失败，请检查文件格式');
+    }
+  };
+  input.click();
+};
+
+const exportArticles = () => {
+  if (!articles.value.length) {
+    Message.warning('没有文章可导出');
+    return;
+  }
+
+  const data = JSON.stringify(articles.value, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `articles_${activeMpId.value || 'all'}_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  Message.success('导出成功');
+};
 </script>
 
 <style scoped>
 .article-list {
-  /* height: calc(100vh - 164px); */
+  /* height: calc(100vh - 186px); */
 }
 
 .a-layout-sider {
-  overflow: auto;
+  overflow: hidden;
 }
 
 .a-list-item {

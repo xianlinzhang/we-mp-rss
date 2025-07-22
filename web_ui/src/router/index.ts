@@ -105,6 +105,34 @@ const routes = [
           permissions: ['admin'] 
         }
       },
+      {
+        path: 'tags',
+        name: 'TagList',
+        component: () => import('@/views/TagList.vue'),
+        meta: { 
+          requiresAuth: true,
+          permissions: ['tag:view'] 
+        }
+      },
+      {
+        path: 'tags/add',
+        name: 'TagAdd',
+        component: () => import('@/views/TagForm.vue'),
+        meta: { 
+          requiresAuth: true,
+          permissions: ['tag:edit'] 
+        }
+      },
+      {
+        path: 'tags/edit/:id',
+        name: 'TagEdit',
+        component: () => import('@/views/TagForm.vue'),
+        props: true,
+        meta: { 
+          requiresAuth: true,
+          permissions: ['tag:edit'] 
+        }
+      },
     ]
   },
   {

@@ -45,3 +45,6 @@ export const getArticleDetail = (id: number) => {
 export const deleteArticle = (id: number) => {
   return http.delete<{code: number, message: string}>(`/wx/articles/${id}`)
 }
+export const ClearArticle = (id: number) => {
+  return http.delete<{code: number, message: string}>(`/wx/articles/clean`)
+}

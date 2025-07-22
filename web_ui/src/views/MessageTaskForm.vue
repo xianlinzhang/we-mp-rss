@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
+const formRef = ref()
 import { useRoute, useRouter } from 'vue-router'
 import { getMessageTask, createMessageTask, updateMessageTask } from '@/api/messageTask'
 import type { MessageTask, MessageTaskCreate } from '@/types/messageTask'
@@ -10,7 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const isEditMode = ref(false)
-const taskId = ref<number | null>(null)
+const taskId = ref<string | null>(null)
 const showCronPicker = ref(false)
 const showMpSelector = ref(false)
 
@@ -23,11 +24,11 @@ const formData = ref<MessageTaskCreate>({
   message_template: '',
   web_hook_url: '',
   mps_id: [],
-  status: 0,
-  cron_exp: '* * * * *'
+  status: 1,
+  cron_exp: '*/5 * * * *'
 })
 
-const fetchTaskDetail = async (id: number) => {
+const fetchTaskDetail = async (id: string) => {
   loading.value = true
   try {
     const res = await getMessageTask(id)
@@ -55,8 +56,22 @@ const fetchTaskDetail = async (id: number) => {
 }
 
 const handleSubmit = async () => {
-  loading.value = true
   try {
+    // 表单验证
+  
+  loading.value = true
+  
+  // 表单验证
+  try {
+    await formRef.value.validate()
+  } catch (error) {
+    Message.error(error?.errors?.join('\n') || '表单验证失败，请检查输入内容')
+    loading.value = false
+    return
+  }
+
+
+    loading.value = true
     // 将mps_id转换为字符串
     const submitData = {
       ...formData.value,
@@ -65,23 +80,33 @@ const handleSubmit = async () => {
     
     if (isEditMode.value && taskId.value) {
       await updateMessageTask(taskId.value, submitData)
-      Message.success('更新任务成功')
+      Message.success('更新任务成功，点击应用按钮后任务才会生效')
     } else {
       await createMessageTask(submitData)
-      Message.success('创建任务成功')
+      Message.success('创建任务成功，点击应用按钮后任务才会生效')
     }
     setTimeout(() => {
       router.push('/message-tasks')
     }, 1500)
+  } catch (error) {
+    console.error(error)
   } finally {
     loading.value = false
   }
 }
-
+const rules = {
+  name: [
+    { required: true, message: '请输入任务名称' },
+    { min: 2, max: 30, message: '公众号名称长度应在2-30个字符之间' }
+  ],
+  description: [
+    { max: 200, message: '描述不能超过200个字符' }
+  ]
+}
 onMounted(() => {
   if (route.params.id) {
     isEditMode.value = true
-    taskId.value = Number(route.params.id)
+    taskId.value = route.params.id
     fetchTaskDetail(taskId.value)
   }
 })
@@ -92,7 +117,7 @@ onMounted(() => {
     <div class="message-task-form">
       <h2>{{ isEditMode ? '编辑消息任务' : '添加消息任务' }}</h2>
       
-      <a-form :model="formData" @submit="handleSubmit">
+      <a-form :model="formData" @submit="handleSubmit" ref="formRef"   :rules="rules">
         <a-form-item label="任务名称" field="name" required>
           <a-input
             v-model="formData.name"
@@ -114,11 +139,18 @@ onMounted(() => {
             placeholder="请输入消息模板内容"
             :auto-size="{ minRows: 4, maxRows: 8 }"
           />
-          <a-button 
+          <a-button v-if="formData.message_type === 0"
             type="outline" 
             style="margin-top: 8px"
             @click="formData.message_template = '### {{feed.mp_name}} 订阅消息：\n{% if articles %}\n{% for article in articles %}\n- [**{{ article.title }}**]({{article.url}}) ({{ article.publish_time }})\n\n{% endfor %}\n{% else %}\n- 暂无文章\n\n{% endif %}'">
-            使用示例模板
+            使用示例消息模板
+          </a-button>
+          <a-button v-else
+            type="outline" 
+            style="margin-top: 8px"
+            @click="formData.message_template = '{\'articles\': [{% for article in articles %}{{article}}{% if not loop.last %},{% endif %}{% endfor %}]{% endfor %}]}'">
+            
+            使用示例WebHook模板
           </a-button>
         </a-form-item>
 
@@ -127,6 +159,7 @@ onMounted(() => {
             v-model="formData.web_hook_url"
             placeholder="请输入WebHook地址"
           />
+          <a-link href="https://open.dingtalk.com/document/orgapp/obtain-the-webhook-address-of-a-custom-robot" target="_blank">如何获取WebHook</a-link>
         </a-form-item>
 
         <a-form-item label="cron表达式" field="cron_exp" required>
@@ -145,7 +178,7 @@ onMounted(() => {
           <a-space>
             <a-input
               :model-value="(formData.mps_id||[]).map(mp => mp.id.toString()).join(',')"
-              placeholder="请选择公众号"
+              placeholder="请选择公众号，留空则对所有公众号生效"
               readonly
               style="width: 300px"
             />
@@ -155,8 +188,8 @@ onMounted(() => {
 
         <a-form-item label="状态" field="status">
           <a-radio-group v-model="formData.status" type="button">
-            <a-radio :value="0">禁用</a-radio>
             <a-radio :value="1">启用</a-radio>
+            <a-radio :value="0">禁用</a-radio>
           </a-radio-group>
         </a-form-item>
 

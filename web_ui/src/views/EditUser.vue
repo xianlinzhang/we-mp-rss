@@ -159,10 +159,6 @@ const fetchUserInfo = async () => {
       nickname: res.nickname || res.username,
       email: res.email || '',
       avatar: res.avatar 
-        ? (res.avatar.startsWith('http') 
-            ? res.avatar 
-            : `${import.meta.env.VITE_API_BASE_URL}${res.avatar}`)
-        : `${import.meta.env.VITE_API_BASE_URL}/assets/avatar.svg`
     }
   } catch (error) {
     router.push('/login')
