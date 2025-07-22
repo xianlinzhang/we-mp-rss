@@ -1,4 +1,4 @@
-from  .base import Base,Column,String,Integer,DateTime,Text,MEDIUMTEXT
+from  .base import Base,Column,String,Integer,DateTime,Text
 class Article(Base):
     __tablename__ = 'articles'
     id = Column(String(255), primary_key=True)
