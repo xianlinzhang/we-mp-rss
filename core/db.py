@@ -35,8 +35,10 @@ class Db:
                     except Exception as e:
                         pass
                     open(db_path, 'w').close()
-                    
-            self.engine = create_engine(con_str,pool_size=10, max_overflow=300, pool_recycle=3600, pool_pre_ping=True)
+
+            logger_echo = False
+
+            self.engine = create_engine(con_str,pool_size=10, max_overflow=300, pool_recycle=3600, pool_pre_ping=True, echo=logger_echo)
             Session = sessionmaker(bind=self.engine,expire_on_commit=True)
             self._session = Session()
         except Exception as e:

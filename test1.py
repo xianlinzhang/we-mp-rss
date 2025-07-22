@@ -300,7 +300,7 @@ def main(html, year_month):
 def test_section_multi():
     with open('test_section_multi.html', 'r', encoding='utf-8') as file:
         html_content = file.read()
-    year_month = "2025-06"
+    year_month = "2025-06-01"
 
     # 执行数据提取
     extracted_data = main(html_content, year_month)
@@ -313,7 +313,7 @@ def test_section_multi():
 def test_table():
     with open('test_table.html', 'r', encoding='utf-8') as file:
         html_content = file.read()
-    year_month = "2025-06"
+    year_month = "2025-06-01"
     # 执行数据提取
     extracted_data = main(html_content, year_month)
 

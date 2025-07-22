@@ -14,4 +14,11 @@ services:
       DINGDING_WEBHOOK: "https://oapi.dingtalk.com/robot/send?access_token=xxx"
     volumes:
       - ./data:/app/data
+      - ./apis:/app/apis
+      - ./core:/app/core
+      - ./docs:/app/docs
+      - ./driver:/app/driver
+      - ./jobs:/app/jobs
+      - ./script:/app/script
+      - ./static:/app/static
     restart: unless-stopped

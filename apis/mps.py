@@ -1,3 +1,5 @@
+import traceback
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from core.auth import get_current_user
 from core.db import DB
@@ -116,6 +118,7 @@ async def update_mps(
         })
     except Exception as e:
         print(f"更新公众号文章: {str(e)}",e)
+        traceback.print_exc()  # 打印完整的堆栈跟踪
         raise HTTPException(
             status_code=status.HTTP_201_CREATED,
             detail=error_response(

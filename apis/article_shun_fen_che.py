@@ -2,9 +2,11 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from pydantic import BaseModel
+from sqlalchemy import or_
 
 from core.auth import get_current_user
 from core.db import DB
+from core.match_area.match import match_words
 from core.wx import search_Biz
 from .base import success_response, error_response
 from datetime import datetime
@@ -55,7 +57,12 @@ async def search_mp(
 async def get_mps(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    kw: str = Query("")
+    kw: str = Query(""),
+    phone: str = Query(""),
+    car_type: str = Query(""),
+    departure: str = Query(""),
+    destination: str = Query(""),
+    time_str: str = Query(""),
 ):
     session = DB.get_session()
     try:
@@ -63,6 +70,22 @@ async def get_mps(
         query = session.query(ArticleShunFenChe)
         if kw:
             query = query.filter(ArticleShunFenChe.original_content.ilike(f"%{kw}%"))
+
+        if phone:
+            query = query.filter(ArticleShunFenChe.phone.ilike(f"%{phone}%"))
+
+        if car_type:
+            query = query.filter(ArticleShunFenChe.car_type.ilike(f"%{car_type}%"))
+
+        if departure:
+            query = query.filter(ArticleShunFenChe.departure.ilike(f"%{departure}%"))
+
+        if destination:
+            query = query.filter(ArticleShunFenChe.destination.ilike(f"%{destination}%"))
+
+        if time_str:
+            query = query.filter(ArticleShunFenChe.time_str.ilike(f"%{time_str}%"))
+
         total = query.count()
         mps = query.order_by(ArticleShunFenChe.created_at.desc()).limit(limit).offset(offset).all()
         return success_response({
@@ -92,6 +115,74 @@ async def get_mps(
             detail=error_response(
                 code=50001,
                 message="获取顺风车列表失败"
+            )
+        )
+
+
+def toggle_ride_status(current_status: str) -> str:
+    """
+    切换顺风车状态：求车 <-> 提供车
+
+    参数:
+        current_status (str): 当前状态（"求车" 或 "提供车"）
+
+    返回:
+        str: 切换后的状态
+    """
+    if current_status == "求车":
+        return "提供车"
+    elif current_status == "提供车":
+        return "求车"
+    else:
+        raise ValueError("无效的状态值，只能是 '求车' 或 '提供车'")
+
+
+def get_related_list(time_str: str, car_type: str, departure: str,destination: str):
+    session = DB.get_session()
+    try:
+        from core.models.article_shun_fen_che import ArticleShunFenChe
+
+        departures = match_words(departure)
+        destinations = match_words(destination)
+
+        # print(f" departure 匹配到的关键词：{departures}")
+        # print(f" destination 匹配到的关键词：{destinations}")
+
+        query = session.query(ArticleShunFenChe)
+        query = query.filter(ArticleShunFenChe.time_str == time_str)
+        query = query.filter(ArticleShunFenChe.car_type == (car_type))
+
+        if departures:
+            query = query.filter(or_(*[ArticleShunFenChe.departure.ilike(f"%{k}%") for k in departures]))
+        else:
+            query = query.filter(ArticleShunFenChe.departure.ilike(f"%{departure}%"))
+
+        if destinations:
+            query = query.filter(or_(*[ArticleShunFenChe.destination.ilike(f"%{k}%") for k in destinations]))
+        else:
+            query = query.filter(ArticleShunFenChe.destination.ilike(f"%{destination}%"))
+
+        mps = query.order_by(ArticleShunFenChe.created_at.asc()).all()
+        return [{
+                "id": mp.id,
+                "original_content": mp.original_content,
+                "car_type": mp.car_type,
+                "departure": mp.departure,
+                "destination": mp.destination,
+                "time_str": mp.time_str,
+                "hours_str": mp.hours_str,
+                "phone": mp.phone,
+                "num_people": mp.num_people,
+                "created_at": mp.created_at.isoformat()
+            } for mp in mps]
+
+    except Exception as e:
+        print(f"获取数据详情错误: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_201_CREATED,
+            detail=error_response(
+                code=50001,
+                message="获取数据详情失败"
             )
         )
 
@@ -166,23 +257,37 @@ async def get_mp(
     session = DB.get_session()
     try:
         from core.models.article_shun_fen_che import ArticleShunFenChe
-        mp = session.query(ArticleShunFenChe).filter(ArticleShunFenChe.id == mp_id).first()
-        if not mp:
+        mp_detail = session.query(ArticleShunFenChe).filter(ArticleShunFenChe.id == mp_id).first()
+        if not mp_detail:
             raise HTTPException(
                 status_code=status.HTTP_201_CREATED,
                 detail=error_response(
                     code=40401,
-                    message="公众号不存在"
+                    message="数据不存在"
                 )
             )
-        return success_response(mp)
+
+        return success_response({
+            "id": mp_detail.id,
+            "original_content": mp_detail.original_content,
+            "car_type": mp_detail.car_type,
+            "departure": mp_detail.departure,
+            "destination": mp_detail.destination,
+            "time_str": mp_detail.time_str,
+            "hours_str": mp_detail.hours_str,
+            "phone": mp_detail.phone,
+            "num_people": mp_detail.num_people,
+            "created_at": mp_detail.created_at.isoformat() if mp_detail.created_at else None,
+            "relate_list": get_related_list(mp_detail.time_str, toggle_ride_status(mp_detail.car_type), mp_detail.departure, mp_detail.destination),
+        })
+
     except Exception as e:
-        print(f"获取公众号详情错误: {str(e)}")
+        print(f"获取数据详情错误: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_201_CREATED,
             detail=error_response(
                 code=50001,
-                message="获取公众号详情失败"
+                message="获取数据详情失败"
             )
         )
 
