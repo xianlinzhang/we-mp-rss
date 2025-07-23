@@ -21,4 +21,6 @@ services:
       - ./jobs:/app/jobs
       - ./script:/app/script
       - ./static:/app/static
+      - ./data_sync.py:/app/data_sync.py
+      - ./init_sys.py:/app/init_sys.py
     restart: unless-stopped

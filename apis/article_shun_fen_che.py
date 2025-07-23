@@ -1,4 +1,6 @@
+import random
 import re
+import string
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from pydantic import BaseModel
@@ -118,6 +120,20 @@ async def get_mps(
             )
         )
 
+
+def generate_unique_id(id: int) -> str:
+    # 将 id 转换为字符串并获取其长度
+    id_str = str(id)
+    id_len = len(id_str)
+
+    # 生成剩余长度的随机字符（仅字母和数字）
+    remaining_len = max(0, 30 - id_len)  # 确保不会出现负数
+    random_chars = ''.join(random.choices(string.ascii_letters + string.digits, k=remaining_len))
+
+    # 拼接 id 和随机字符，并截断为 30 个字符
+    unique_id = (id_str + random_chars)[:30]
+
+    return unique_id
 
 def toggle_ride_status(current_status: str) -> str:
     """
@@ -328,6 +344,7 @@ async def add_mp(
             existing_feed.phone = phone
             existing_feed.time_str = time_str
             existing_feed.updated_at = now
+            session.commit()
         else:
             # 创建新的Feed记录
             new_feed = ArticleShunFenChe(
@@ -344,8 +361,10 @@ async def add_mp(
 
             )
             session.add(new_feed)
-           
-        session.commit()
+            session.commit()
+            new_feed.unique_id = generate_unique_id(new_feed.id)
+            session.commit()
+            session.refresh(new_feed)
         
         feed = existing_feed if existing_feed else new_feed
             

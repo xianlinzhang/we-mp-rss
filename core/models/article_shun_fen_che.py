@@ -1,10 +1,11 @@
-from .base import Base, Column, String, Integer, DateTime, Text, MEDIUMTEXT
+from .base import Base, Column, String, Integer, DateTime, Text
 
 # 顺风车数据表
 class ArticleShunFenChe(Base):
     __tablename__ = 'articles_shun_fen_che'
     # 定义 id 字段，作为主键，同时创建索引
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    unique_id = Column(String(30))
     car_type = Column(String(255))
     departure = Column(String(500))
     destination = Column(String(500))
