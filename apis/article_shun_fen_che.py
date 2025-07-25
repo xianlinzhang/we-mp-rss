@@ -273,7 +273,13 @@ async def get_mp(
     session = DB.get_session()
     try:
         from core.models.article_shun_fen_che import ArticleShunFenChe
-        mp_detail = session.query(ArticleShunFenChe).filter(ArticleShunFenChe.id == mp_id).first()
+        # 唯一Id查找数据
+        mp_detail = session.query(ArticleShunFenChe).filter(ArticleShunFenChe.unique_id == mp_id).first()
+
+        # 主键Id查找数据
+        # if not mp_detail:
+        #     mp_detail = session.query(ArticleShunFenChe).filter(ArticleShunFenChe.id == mp_id).first()
+
         if not mp_detail:
             raise HTTPException(
                 status_code=status.HTTP_201_CREATED,
